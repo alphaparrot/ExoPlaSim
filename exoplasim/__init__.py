@@ -9,6 +9,7 @@ import numpy as np
 import glob
 import exoplasim.gcmt 
 import exoplasim.pyburn
+import exoplasim.pyfft
 import exoplasim.filesupport
 from exoplasim.filesupport import SUPPORTED
 import exoplasim.randomcontinents
