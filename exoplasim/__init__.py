@@ -69,6 +69,9 @@ class Model(object):
         is 10, but PlaSim has been used with 5 layers in many studies.
         More layers are supported, but not recommended except at higher
         resolutions.
+    nlights : int, optional
+        The number of light sources in the sky. Must be greater than 0.
+        Default is 1.
     ncpus : int, optional
         The number of MPI processes to use, typically the number of cores
         available. If ncpus=1, MPI will not be used.
@@ -149,11 +152,15 @@ class Model(object):
     
 
     """
-    def __init__(self,resolution="T21",layers=10,ncpus=4,precision=8,debug=False,inityear=0,
+    def __init__(self,resolution="T21",layers=10,nlights=1,ncpus=4,precision=8,debug=False,inityear=0,
                 recompile=False,optimization=None,mars=False,workdir="most",source=None,force991=False,
                 modelname="MOST_EXP",outputtype=".npz",crashtolerant=False):
         
         global sourcedir
+        
+        self.nlights=nlights
+        if self.nlights<1:
+            self.nlights=1
         
         #self.burn7 = burn7
         self.mars = mars
@@ -327,7 +334,8 @@ class Model(object):
         if not source:
             source = "%s/plasim/run"%sourcedir
         
-        self.executable = source+"/most_plasim_t%d_l%d_p%d.x"%(self.nsp,self.layers,ncpus)
+        self.executable = source+"/most_plasim_t%d_l%d_s%d_p%d.x"%(self.nsp,self.layers,
+                                                                   self.nlights,ncpus)
         
         #if self.burn7:
             #burnsource = "%s/postprocessor"%sourcedir
@@ -345,9 +353,10 @@ class Model(object):
             if force991:
                 extraflags+= "-f "
             os.system("cwd=$(pwd) && "+
-                    "cd %s && ./compile.sh -n %d -p %d -r T%d -v %d "%(sourcedir,self.ncpus,
+                    "cd %s && ./compile.sh -n %d -p %d -r T%d -v %d -s %d"%(sourcedir,self.ncpus,
                                                                         precision,self.nsp,
-                                                                        self.layers)+
+                                                                        self.layers,
+                                                                        self.nlights)+
                     extraflags+" &&"+
                     "cd $cwd")
         
@@ -1746,7 +1755,7 @@ class Model(object):
             pHe=None,pN2=None,pO2=None,pCO2=None,pAr=None,pNe=None,
             pKr=None,pH2O=None,gascon=None,pressure=None,pressurebroaden=True,
             vtype=0,rotationperiod=1.0,synchronous=False,substellarlon=180.0,
-            keplerian=False,meananomaly0=None,
+            keplerian=False,nbody=False,sourcefile=None,meananomaly0=None,
             year=None,glaciers={"toggle":False,"mindepth":2.0,"initialh":-1.0},
             restartfile=None,gravity=None,radius=None,eccentricity=None,
             obliquity=None,lonvernaleq=None,fixedorbit=False,orography=None,
@@ -1931,6 +1940,15 @@ class Model(object):
               accurate calculation of a wide diversity of orbits, including with higher
               eccentricity. Note that extreme orbits may have extreme results, including
               extreme crashes.
+            nbody : bool, optional
+              True/False. If True, the positions of each light source on the celestial sphere
+              and its brightness will be provided as right ascension, declination, and insolation
+              via `sources.dat.
+            sourcefile : str, optional
+              If given, a file to be placed and renamed as `sources.dat`. There should be 
+              three columns per light source and one row per timestep, with each set of three
+              columns corresponding to RA, DEC, and total insolation received by the planet.
+              RA and DEC should be in radians and insolation in W/m$^2$.
             meananomaly0 : float, optional
               The initial mean anomaly in degrees. Only used if `keplerian=True`.
                 
@@ -2369,6 +2387,17 @@ References
         
         self._edit_namelist("planet_namelist","NGENKEPLERIAN",str(keplerian*1))
         self.keplerian=keplerian
+        
+        self._edit_namelist("planet_namelist","NBODY",str(nbody*1))
+        self.nbody=nbody
+        
+        if self.keplerian or self.nbody:
+            self._edit_namelist("planet_namelist","NFIXORB","1")
+            self.fixedorbit=True
+            
+        if sourcefile is not None and os.path.isfile(sourcefile):
+            os.system("cp %s %s/sources.dat"%(sourcefile,self.workdir))
+            self.sourcefile=sourcefile
         
         if meananomaly0 is not None:
             self._edit_namelist("planet_namelist","MEANANOM0",str(meananomaly0))
@@ -2813,6 +2842,16 @@ References
             meananomaly0 = float(cfg[84])
         except:
             meananomaly0 = None
+            
+        try:
+            nbody = bool(cfg[85])
+        except:
+            nbody = False
+            
+        try:
+            sourcefile = noneparse(cfg[86],str)
+        except:
+            sourcefile = None
         
         self.configure(noutput=noutput,flux=flux,startemp=startemp,starspec=starspec,starradius=starradius,
                     gascon=gascon,pressure=pressure,pressurebroaden=pressurebroaden,
@@ -2841,7 +2880,7 @@ References
                     snapshots=snapshots,resources=resources,landmap=landmap,stormclim=stormclim,
                     nstorms=nstorms,stormcapture=stormcapture,topomap=topomap,tlcontrast=tlcontrast,
                     otherargs=otherargs,glaciers=glaciers,threshold=threshold,keplerian=keplerian,
-                    meananomaly0=meananomaly0)       
+                    nbody=nbody,sourcefile=sourcefile,meananomaly0=meananomaly0)       
     
     def modify(self,**kwargs):
         """Modify any already-configured parameters. All parameters accepted by :py:func:`configure() <exoplasim.Model.configure>` can be passed as arguments.
@@ -3038,6 +3077,17 @@ References
             if key=="keplerian":
                 self.keplerian=value
                 self._edit_namelist("planet_namelist","NGENKEPLERIAN",str(self.keplerian*1))
+            if key=="nbody":
+                self.nbody=value
+                self._edit_namelist("planet_namelist","NBODY",str(self.nbody*1))
+                self.fixedorbit=True
+                self._edit_namelist("planet_namelist","NFIXORB",str(self.fixedorbit*1))
+            
+            if key=="sourcefile":
+                self.sourcefile=value
+                if self.sourcefile is not None and os.path.isfile(self.sourcefile):
+                    os.system("cp %s %s/sources.dat"%(self.sourcefile,self.workdir))
+            
             if key=="meananomaly0":
                 self.meananomaly0=value
                 if self.meanomaly0 is not None:
@@ -3071,6 +3121,10 @@ References
                 self.lonvernaleq=value
                 self._edit_namelist("planet_namelist","MVELP",str(self.lonvernaleq))
             if key=="fixedorbit":
+                if "keplerian" in kwargs and kwargs["keplerian"]:
+                    value=True
+                if "nbody" in kwargs and kwargs["nbody"]:
+                    value=True
                 self.fixedorbit=value
                 self._edit_namelist("planet_namelist","NFIXORB",str(self.fixedorbit*1))
                 
@@ -3708,6 +3762,8 @@ References
         cfg.append(str(self.starradius))
         cfg.append(str(self.keplerian*1))
         cfg.append(str(self.meananomaly0))
+        cfg.append(str(self.nbody))
+        cfg.append(str(self.sourcefile))
         
         print("Writing configuration....\n"+"\n".join(cfg))
         print("Writing to %s...."%filename)
@@ -3927,4 +3983,217 @@ class TLmodel(Model):
                         eccentricity=eccentricity,obliquity=obliquity,timestep=timestep,
                         snapshots=snapshots,physicsfilter=physicsfilter,ozone=ozone,
                         **kwargs)
+        
+class System(Model):
+    """Initialize a planetary system that can interface with external codes that provide positions and luminosities.
     
+    All positions in AU and all stellar parameters in solar units."""
+    def __init__(self,**kwargs):
+        super(System,self).__init__(**kwargs)
+        self.sources = {}
+        for n in range(self.nlights):
+            self.sources[n] = {"xyz":np.array([]),"RA":np.array([]),"DEC":np.array([]),
+                               "R":np.array([]),"L":np.array([]),"S":np.array([])} 
+                                    #x,y,z; right ascension, declination, radius,
+                                    #luminosity, and insolation at planet
+        
+    def configure(self,timestep=30.0,snapshots=720,nbody=True,**kwargs):
+        super(System,self).configure(timestep=timestep,snapshots=snapshots,nbody=nbody)
+    
+    def _RADEC(self,source):
+        sourcevec = (source - self.pxyz).T
+        dist2 = np.dot(sourcevec,sourcevec,axis=0)
+        nlen2 = np.dot(self.north,self.north,axis=0)
+        decl = -(np.arccos(np.dot(sourcevec,self.north,axis=0)/np.sqrt(dist2*nlen2))-0.5*np.pi)
+        ra = np.arctan2(sourcevec[1,:]*np.cos(decl)-sourcevec[2,:]*np.sin(decl),sourcevec[0,:])
+        return ra,decl
+    
+    def setPlanetProperties(self,x=0.,y=0.,z=0.,north_x=0.,north_y=0.,north_z=1.):
+        """Set the cartesian coordinates and North-pointing vector of the planet.
+        
+        The cartesian coordinates can be in any coordinate system, i.e. have any origin,
+        but as the North vector is a vector, it should reflect the planet as the origin.
+        
+        Parameters
+        ----------
+        x : float or array-like, optional
+            X-coordinate for the planet, in AU.
+        y : float or array-like, optional
+            Y-coordinate for the planet, in AU.
+        z : float or array-like, optional
+            Z-coordinate for the planet, in AU.
+        north_x : float or array-like, optional
+            X-component of the north-pointing vector for the planet.
+        north_y : float or array-like, optional
+            Y-component of the north-pointing vector for the planet.
+        north_z : float or array-like, optional
+            Z-component of the north-pointing vector for the planet.
+        """
+        coords = (np.array(x),np.array(y),np.array(z))
+        self.pxyz = np.column_stack(coords)
+        northcoords = (np.array(north_x),np.array(north_y),np.array(north_z))
+        self.north = np.column_stack(northcoords)
+    
+    def setSourceProperties(self,n,radius=1.0,luminosity=1.0,x=0.,y=0.,z=0.):
+        """Add a light source to the celestial sphere.
+        
+        Parameters
+        ----------
+        n : int
+            Which source is being set.
+        radius : float or array-like, optional
+            Radius of the light source in solar radii. If provided as an array and the length
+            does not exactly equal the number of timesteps to be computed, then linear
+            interpolation will be used to fit the timesteps to be computed.
+        luminosity : float or array-like, optional
+            Luminosity of the light source in solar luminosities. If provided as an array and the length
+            does not exactly equal the number of timesteps to be computed, then linear
+            interpolation will be used to fit the timesteps to be computed.
+        x : float or array-like, optional
+            X-coordinate for the source, in AU.
+        y : float or array-like, optional
+            Y-coordinate for the source, in AU.
+        z : float or array-like, optional
+            Z-coordinate for the source, in AU.
+        """
+        if n>self.nlights+1:
+            raise Exception("Attempting to set more sources than the model was compiled for.")
+        if n not in sources:
+            self.sources[n] = {"xyz":np.array([]),"RA":np.array([]),"DEC":np.array([]),
+                               "R":np.array([]),"L":np.array([]),"S":np.array([])}
+        self.sources[n]["R"] = radius
+        self.sources[n]["L"] = luminosity
+        self.sources[n]["xyz"] = np.column_stack((np.array(x),np.array(y),np.array(z)))
+        
+    def couple(self,compute_eclipses=True):
+        """Perform final calculations and couple celestial coordinates to ExoPlaSim.
+        
+        This routine will compute right ascension and declination for each light source
+        using the provided cartesian coordinates, as well as the insolation is contributes
+        at each timestep given its luminosity and distance from the planet. By default,
+        eclipsing light sources will result in a decrease in overall insolation. The
+        insolation, RA, and DEC for each light source will be written to `sources.dat`
+        for ingestion by ExoPlaSim.
+        
+        In the event of an eclipse, insolation is reduced for all parts of the planet for
+        which the sources are visible; Earth-style solar eclipses where the Moon traces
+        an eclipse path are not yet supported.
+        
+        Parameters
+        ----------
+        compute_eclipses : bool, optional
+            If True, compute all eclipses. Note that for many timesteps and many light-sources,
+            this can make the coupling step computationally expensive, as this involves
+            pair-wise angular separation comparisonsl, which scales proportionally to n!/(n-2)!
+        
+        Yields
+        ------
+        sources.dat
+            ExoPlaSim input file
+        """
+        
+        if self.pxyz.shape[0]==1 and self.sources[0]["xyz"].shape[0]>1:
+            self._pxyz = np.zeros_like(self.sources[0]["xyz"])
+            self._pxyz[:,:] = self.pxyz[np.newaxis,:]
+            self.pxyz = self._pxyz
+        else:
+            for n in range(self.nlights):
+                if self.sources[n]["xyz"].shape[0]>1:
+                    self._pxyz = np.zeros_like(self.sources[n]["xyz"])
+                    self._pxyz[:,:] = self.pxyz[np.newaxis,:]
+                    self.pxyz = self._pxyz
+                    break
+            if self.pxyz.shape[0]==1:
+                nsteps = None
+                while not isinstance(nsteps,int):
+                    nstepprompt = input("All coordinates currently loaded are scalars. Please enter an integer number of timesteps that will be computed: ")
+                    try:
+                        nsteps = int(nstepprompt)
+                    except:
+                        pass #Go back through the loop
+                self._pxyz = np.zeros((nsteps,3))
+                self._pxyz[:,:] = self.pxyz[np.newaxis,:]
+                self.pxyz = self._pxyz
+        #By this point, the planet's coordinates for sure have a length.
+        
+        if self.north.shape[0]==1:
+            self._north = np.zeros_like(self.pxyz)
+            self._north[:,:] = self.north[np.newaxis,:]
+            self.north = self._north
+        
+        for n in range(self.nlights):
+            if self.sources[n]["xyz"].shape[0]==1:
+                _xyz = np.zeros_like(self.pxyz)
+                _xyz[:,:] = self.sources[n]["xyz"][np.newaxis,:]
+                self.sources[n]["xyz"] = _xyz
+                self.sources[n]["R"] = np.ones(self.pxyz.shape[0])*self.sources[n]["R"]
+                self.sources[n]["L"] = np.ones(self.pxyz.shape[0])*self.sources[n]["L"]
+            elif self.sources[n]["xyz"].shape[0]==0:
+                del self.sources[n]
+                print(f"Warning: source {n} wasn't set. Deleting it.")
+            
+            self.sources[n]["RA"],self.sources[n]["DEC"] = self._RADEC(self.sources[n]["xyz"])
+            distance2 = np.dot(self.sources[n]["xyz"],self.sources[n]["xyz"],axis=1)
+            self.sources[n]["S"] = self.sources["L"]*1361.1665/distance2 #At 1 AU, 1 Lsun=1361.1665 W/m^2
+            self.sources[n]["dist"] = np.sqrt(distance2)
+            self.sources[n]["ext"] = 2*np.arctan(self.sources[n]["R"]*0.00465047/self.sources[n]["dist"]) #Angular diameter
+            #At this stage we have not computed any eclipses.
+        numcomparisons = np.math.factorial(self.nlights)//(2*np.math.factorial(max(self.nlights-2,0)))
+        
+        if numcomparisons>0 and compute_eclipses: #Possibility of eclipses
+            self.pairs = []
+            self.angseparations = np.zeros((numcomparisons,self.pxyz.shape[0]))
+            self.relseparations = np.zeros((numcomparisons,self.pxyz.shape[0]))
+            self.eclipses       = np.zeros((numcomparisons,self.pxyz.shape[0]))
+            j=0
+            for n in range(self.nlights-1):
+                for k in range(n+1,self.nlights):
+                    da = self.sources[n]["DEC"]
+                    db = self.sources[k]["DEC"]
+                    ra = self.sources[n]["RA"]
+                    rb = self.sources[k]["RA"]
+                    self.angseparations[j,:] = np.arccos(np.sin(da)*np.sin(db)+np.cos(da)*np.cos(db)*np.cos(ra-rb))
+                    self.relseparations[j,:] = self.angseparations[j,:]/(0.5*(self.sources[n]["ext"]+self.sources[k]["ext"])
+                    self.pairs.append((n,k))
+                    self.eclipses[j,:] = 1.0*(self.relseparations[j,:]<1.0)
+                    j+=1
+            for j,pair in enumerate(self.pairs):
+                idx = np.argwhere(self.eclipses[j,:]>0)
+                for n in idx:
+                    if np.sum(self.eclipses[:,n[0]])>2: #Compound eclipse
+                        for k in [x for x in range(numcomparisons) if x!=j]:
+                            if self.eclipses[k,n[0]]>0 and pair[0] in self.pairs[k] or pair[1] in self.pairs[k]: #One of the two bodies is also eclipsing another body
+                                self.eclipses[j,n[0]] = 2.
+                                self.eclipses[k,n[0]] = 2.
+                        if self.eclipses[j,n[0]]==2.:
+                            continue #We'll do the compound eclipse math on the next pass
+                            
+                    #If we made it here it's not a compound eclipse, so the math is straightforward
+
+                    r1 = 0.5*self.sources[pair[0]]["ext"][n[0]]
+                    r2 = 0.5*self.sources[pair[1]]["ext"][n[0]]
+                    d = self.angseparations[j,n[0]]
+                    part1 = r1**2*np.arccos((d**2+r1**2-rs**2)/(2*d*r1))
+                    part2 = r2**2*np.arccos((d**2-r1**2+rs**2)/(2*d*r2))
+                    part3 = 0.5*np.sqrt((-d+r1+r2)*(d+r1-r2)*(d-r1+r2)*(d+r1+r2))
+                    area = part1+part2+part3
+                    if self.sources[pair[0]]["dist"][n[0]]>self.sources[pair[1]]["dist"][n[0]]:
+                        self.sources[pair[0]]["S"][n[0]] *= 1-area/(np.pi*r1**2)
+                    else:
+                        self.sources[pair[1]]["S"][n[0]] *= 1-area/(np.pi*r2**2)
+                    
+            #Go to each timestep with a compound eclipse and do the math
+            compoundeclipses = np.sum(self.eclipses>1,axis=0)
+            idx = np.argwhere(compoundeclipses>0)
+            for n in idx:
+                bodies = []
+                for j in range(numcomparisons):
+                    if self.eclipses[j,n[0]]==2:
+                        bodies.append(self.pairs[j][0])
+                        bodies.append(self.pairs[j][1])
+                distances = [self.sources[x]["dist"][n[0]] for x in bodies]
+                #ksort = np.argsort(distances)
+                #for a in range(len(bodies-1)):
+                    #for b in range(a,len(bodies)):
+                        #r1 = 
+        

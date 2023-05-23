@@ -643,6 +643,7 @@
 
       integer :: nfixorb = 0           ! Global switch to fix orbit
       integer :: ngenkeplerian = 0     ! If 1, compute a general Keplerian orbit 
+      integer :: nbody = 0             ! If 1, use sources.dat as input
 
       real :: akap   = 0.0             ! Kappa
       real :: alr    = 0.0             ! Lapse rate
