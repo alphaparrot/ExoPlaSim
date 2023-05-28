@@ -4064,8 +4064,119 @@ class System(Model):
         self.sources[n]["R"] = radius
         self.sources[n]["L"] = luminosity
         self.sources[n]["xyz"] = np.column_stack((np.array(x),np.array(y),np.array(z)))
+     
+    def _samplesource(self,source,npoints=1000,alpha=2):
+        r,theta = sunflower(npoints,alpha,radius=np.sin(source["radius"]))
+        x = np.ones_like(theta) #For RA=0, y = rcos(DEC)sin(RA) = 0
+        y = r*np.cos(theta)
+        z = r*np.sin(theta)
+        dec = source["DEC"]
+        ra = source["RA"]
+        xnu = (x*np.cos(dec)-z*np.sin(dec))*np.cos(ra) - y*np.sin(ra)
+        ynu = (x*np.cos(dec)-z*np.sin(dec))*np.sin(ra) + y*np.cos(ra)
+        znu =  x*np.sin(dec)+z*np.cos(dec)
+        #Wrap to surface of sphere:
+        dist = np.sqrt(xnu**2+ynu**2+znu**2)
+        xnu /= dist
+        ynu /= dist
+        znu /= dist
+        decl = np.arcsin(znu)
+        rasc = np.arctan2(ynu,xnu)
+        return rasc,decl
+     
+    def _eclipse(self,source,occulter,npoints=1000,alpha=0):
+        '''Compute the occulted fraction of a source using even sampling
         
-    def couple(self,compute_eclipses=True):
+        This algorithm works by evenly-sampling a circle (using a sunflower distribution),
+        rotating that circle up on the unit sphere to the location of the source,
+        and then for every point, calculate the distance to the occulter and determine if
+        it is occluded by the occulter. The fraction of points that are occulted is 
+        approximately the occultation fraction.
+        
+        Parameters
+        ----------
+        source : dict
+            Extent and equatorial coordinates of the eclipsed source. 
+            Dictionary should contain members 'radius' (half angular diameter in radians),
+            'RA' (right ascension in radians), and 'DEC' (declination in radians)
+        occulter : dict
+            Extent and equatorial coordinates of the occulter. 
+            Dictionary should contain members 'radius' (half angular diameter in radians),
+            'RA' (right ascension in radians), and 'DEC' (declination in radians)
+        npoints : int, optional
+            Number of points to sample
+        alpha : int, optional
+            Tuning parameter to increase number of points along circle boundary. Should not
+            be greater than 2.
+            
+        Returns
+        -------
+        float, np.ndarray(2D)
+            Occultation fraction and occultation mask. Occultation masks can be combined
+            for compound eclipses.
+        '''
+        pRA,pDEC = self.samplesource(source,npoints=npoints,alpha=alpha) #RA, DEC
+        angdists = np.arccos(np.sin(pDEC)*np.sin(occulter["DEC"])+np.cos(pDEC)*np.cos(occulter["DEC"])*np.cos(occulter["RA"]-pRA))
+        mask = angdists<=occulter["radius"]
+        fraction = np.sum(mask*1)/float(len(mask))
+        return fraction,mask
+    
+    def _exacteclipse(self,radius1,radius2,separation):
+        '''Calculate exact eclipsed area for the simple case of one source and one occulter
+        
+        Assumes circular/spherical objects.
+        
+        Parameters
+        ----------
+        radius1 : float
+            Radius of the first object
+        radius2 : float
+            Radius of the second object
+        separation : float
+            Separation between the two object centers
+            
+        Returns
+        -------
+        float
+            The intersecting area of the two circles
+        '''
+        part1 = radius1**2*np.arccos((separation**2+radius1**2-radius2**2)/(2*separation*radius1))
+        part2 = radius2**2*np.arccos((separation**2-radius1**2+radius2**2)/(2*separation*radius2))
+        part3 = 0.5*np.sqrt((radius1+radius2-separation)*(radius1-radius2+separation)*\
+                           (-radius1+radius1+spearation)*(radius1+radius2+separation))
+        area = part1+part2+part3
+        return area
+    
+    def _eclipsetree(self,parents,children,parent,child,occulters):
+        '''Recursive tree search:
+                For each level:
+                    If the child is not itself a parent and hasn't already been added:
+                        return its info
+                    
+                    If it is: 
+                        Add each member of the next level down along with its own tree,
+                        IFF it is also a child of the parent and hasn't already been added
+                    
+        
+        '''
+        if child not in parents and child not in occulters:
+            #This is the end of a tree
+            occulters.append(child)
+            return [children[child],]
+        elif child in parents and child not in occulters:
+            #The child has its own tree
+            occulters.append(child)
+            subocculters = [children[child],]
+            for grandchild in parents[child]["children"]:
+                if grandchild in parent["children"] and grandchild not in occulters:
+                    subocculters += self._eclipsetree(parents,children,parent,grandchild,occulters)
+            return subocculters
+        else:
+            #The child is already in occulters, so this is a dead-end
+            return []
+            
+        
+    def couple(self,compute_eclipses=True,npoints=10000):
         """Perform final calculations and couple celestial coordinates to ExoPlaSim.
         
         This routine will compute right ascension and declination for each light source
@@ -4085,6 +4196,9 @@ class System(Model):
             If True, compute all eclipses. Note that for many timesteps and many light-sources,
             this can make the coupling step computationally expensive, as this involves
             pair-wise angular separation comparisonsl, which scales proportionally to n!/(n-2)!
+        npoints : int, optional
+            Number of sampling points to use on the primary for compound eclipses. 1000 is good;
+            10000 is better.
         
         Yields
         ------
@@ -4146,6 +4260,7 @@ class System(Model):
             self.relseparations = np.zeros((numcomparisons,self.pxyz.shape[0]))
             self.eclipses       = np.zeros((numcomparisons,self.pxyz.shape[0]))
             j=0
+            #Compute angular separations and angular separations relative to angular extents for all pairs
             for n in range(self.nlights-1):
                 for k in range(n+1,self.nlights):
                     da = self.sources[n]["DEC"]
@@ -4155,45 +4270,134 @@ class System(Model):
                     self.angseparations[j,:] = np.arccos(np.sin(da)*np.sin(db)+np.cos(da)*np.cos(db)*np.cos(ra-rb))
                     self.relseparations[j,:] = self.angseparations[j,:]/(0.5*(self.sources[n]["ext"]+self.sources[k]["ext"])
                     self.pairs.append((n,k))
+                    #If the relative separation of the pair is less than the sum of their angular radii then they're eclipsing
                     self.eclipses[j,:] = 1.0*(self.relseparations[j,:]<1.0)
                     j+=1
+            #For each pair of sources, identify the timesteps where an eclipse is occurring
             for j,pair in enumerate(self.pairs):
                 idx = np.argwhere(self.eclipses[j,:]>0)
                 for n in idx:
-                    if np.sum(self.eclipses[:,n[0]])>2: #Compound eclipse
-                        for k in [x for x in range(numcomparisons) if x!=j]:
-                            if self.eclipses[k,n[0]]>0 and pair[0] in self.pairs[k] or pair[1] in self.pairs[k]: #One of the two bodies is also eclipsing another body
+                    if self.eclipses[j,n[0]]==2.:
+                        #We have already flagged this pair as being associated with a compound eclipse.
+                        #We don't need to go and check it for its own associated pairs, because
+                        #if they're involved in eclipses on this timestep, we'll get to them independently
+                        #and identify the compound eclipse that way.
+                        continue
+                    if np.sum(self.eclipses[:,n[0]])>2: #There is more than 1 eclipse happening 
+                        #on this timestep, so we need to check for compound eclipses
+                        eclipsing_pairs = np.where(self.eclipses[:,n[0]]>0)[0]
+                        for k in [x for x in eclipsing_pairs if x!=j]:
+                            #Check each pair that isn't the current pair and see if either of the members is part of this pair
+                            if pair[0] in self.pairs[k] or pair[1] in self.pairs[k]: #One of the two bodies is also eclipsing another body
                                 self.eclipses[j,n[0]] = 2.
                                 self.eclipses[k,n[0]] = 2.
                         if self.eclipses[j,n[0]]==2.:
                             continue #We'll do the compound eclipse math on the next pass
                             
                     #If we made it here it's not a compound eclipse, so the math is straightforward
-
                     r1 = 0.5*self.sources[pair[0]]["ext"][n[0]]
                     r2 = 0.5*self.sources[pair[1]]["ext"][n[0]]
                     d = self.angseparations[j,n[0]]
-                    part1 = r1**2*np.arccos((d**2+r1**2-rs**2)/(2*d*r1))
-                    part2 = r2**2*np.arccos((d**2-r1**2+rs**2)/(2*d*r2))
-                    part3 = 0.5*np.sqrt((-d+r1+r2)*(d+r1-r2)*(d-r1+r2)*(d+r1+r2))
-                    area = part1+part2+part3
+                    area = self._exacteclipse(r1,r2,d)
                     if self.sources[pair[0]]["dist"][n[0]]>self.sources[pair[1]]["dist"][n[0]]:
                         self.sources[pair[0]]["S"][n[0]] *= 1-area/(np.pi*r1**2)
                     else:
                         self.sources[pair[1]]["S"][n[0]] *= 1-area/(np.pi*r2**2)
                     
+                    
             #Go to each timestep with a compound eclipse and do the math
             compoundeclipses = np.sum(self.eclipses>1,axis=0)
-            idx = np.argwhere(compoundeclipses>0)
-            for n in idx:
-                bodies = []
-                for j in range(numcomparisons):
-                    if self.eclipses[j,n[0]]==2:
-                        bodies.append(self.pairs[j][0])
-                        bodies.append(self.pairs[j][1])
-                distances = [self.sources[x]["dist"][n[0]] for x in bodies]
-                #ksort = np.argsort(distances)
-                #for a in range(len(bodies-1)):
-                    #for b in range(a,len(bodies)):
-                        #r1 = 
+            idx = np.where(compoundeclipses>0)
+            
+            for n in idx[0]:
+                
+                parents = {}
+                parentkeys = []
+                parentdists = []
+                children = {}
+                kx = np.where(self.eclipses[:,n]>1)[0]
+                for j in kx:
+                    #For each pair associated with a compound eclipse, assign parent-child relationship
+                    #based on distance
+                    if self.sources[self.pairs[j][0]]["dist"][n]>=self.sources[self.pairs[j][1]]["dist"][n]:
+                        parent = self.pairs[j][0]
+                        child = self.pairs[j][1]
+                    else:
+                        parent = self.pairs[j][1]
+                        child = self.pairs[j][0]
+                    if parent not in parents:
+                        parents[parent] = {"radius":self.sources[parent]["ext"][n]*0.5,
+                                          "RA":self.sources[parent]["RA"][n],
+                                          "DEC":self.sources[parent]["DEC"][n],
+                                          "children":[child,],
+                                          "children_seps":[self.angseparations[j,n],]
+                                          "children_dists":[self.sources[child]["dist"][n],]}
+                        parentkeys.append(parent)
+                        parentdists.append(self.sources[parent]["dist"][n])
+                    else:
+                        if child not in parents[parent]["children"]:
+                            parents[parent]["children"].append(child)
+                            parents[parent]["children_seps"].append(self.angseparations[j,n])
+                            parents[parent]["children_dists"].append(self.sources[child]["dist"][n])
+                    if child not in children:
+                        children[child] = {"radius":self.sources[child]["ext"][n]*0.5,
+                                           "RA":self.sources[child]["RA"][n],
+                                           "DEC":self.sources[child]["DEC"][n]}
+                for parent in parents: #Sort children of each parent by decreasing distance from observer
+                    parents[parent]["children_dists"] = np.array(parents[parent]["children_dists"])
+                    parents[parent]["children"] = np.array(parents[parent]["children"])
+                    parents[parent]["children_seps"] = np.array(parents[parent]["children_seps"])
+                    distsort = np.argsort(parents[parent]["children_dists"])[::-1] #descending order
+                    parents[parent]["children"] = parents[parent]["children"][distsort]
+                    parents[parent]["children_seps"] = parents[parent]["children_seps"][distsort]
+                    parents[parent]["children_dists"] = parents[parent]["children_dists"][distsort]
+                    
+                #Sort parents in order of decreasing distance from observer
+                parentkeys = np.array(parentkeys)
+                parentdists = np.array(parentdists)
+                distsort = np.argsort(parentdists)[::-1] #descending order
+                parentkeys = parentkeys[distsort]
+                parentdists = parentdists[distsort]
+                #At this point, you should be able to walk a compound eclipse chain and identify
+                #each involved body in order of decreasing distance from the observer, by starting from
+                #the parent furthest from the observer, and for each child in descending order checking
+                #to see if it too is a parent, and building a tree that way
+                
+                for src in parentkeys: #In order of decreasing distance
+                    source = parents[src]
+                    eclipsed = []
+                    eclipsefraction = 0.0
+                    for k,child in enumerate(source["children"]): #In order of decreasing distance
+                        #Start a new tree
+                        occulters = []
+                        occulters += self._eclipsetree(parents,children,source,child,eclipsed)
+                        if len(occulters)==1: #This is not actually a compound eclipse and we can use the exact method
+                            occulter = occulters[0]
+                            area = self._exacteclipse(source["radius"],occulter["radius"],
+                                                      source["children_seps"][k])
+                            eclipsefraction += area/(np.pi*source["radius"]**2)
+                            
+                        else:
+                            #We have a tree to work through
+                            mask = np.zeros(npoints,dtype=bool)
+                            for occulter in occulters:
+                                f,m = self._eclipse(source,occulter,npoints=npoints)
+                                mask += m
+                            eclipsefraction += np.nansum(mask*1)/float(len(mask))
+                    self.sources[src]["S"][n] *= 1.0-eclipsefraction
+                    
+        inputtext = []
+        for n in range(len(self.sources[0]["RA"])):
+            inputtext.append([])
+            for k in range(len(self.sources)):
+                inputtext[-1] += f"{self.sources[k]['RA'][n]} {self.sources[k]['DEC'][n]} {self.sources[k]['S'][n]}"
+            inputtext[-1] = " ".join(inputtext[-1])
+        inputtext = "\n".join(inputtext)
+        with open(f"{self.workdir}/sources.dat","w") as datf:
+            datf.write(inputtext)
+            
+        return inputtext
+                            
+                        
+                        _
         
