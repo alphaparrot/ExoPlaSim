@@ -2395,6 +2395,9 @@ References
             self._edit_namelist("planet_namelist","NFIXORB","1")
             self.fixedorbit=True
             
+        if self.nbody:
+            self._edit_namelist("radmod_namelist","NSOURCES",str(self.nlights))
+            
         if sourcefile is not None and os.path.isfile(sourcefile):
             os.system("cp %s %s/sources.dat"%(sourcefile,self.workdir))
             self.sourcefile=sourcefile
@@ -2852,6 +2855,11 @@ References
             sourcefile = noneparse(cfg[86],str)
         except:
             sourcefile = None
+            
+        try:
+            self.nlights = int(noneparse(cfg[87]))
+        except:
+            self.nlights = 1
         
         self.configure(noutput=noutput,flux=flux,startemp=startemp,starspec=starspec,starradius=starradius,
                     gascon=gascon,pressure=pressure,pressurebroaden=pressurebroaden,
@@ -3082,6 +3090,7 @@ References
                 self._edit_namelist("planet_namelist","NBODY",str(self.nbody*1))
                 self.fixedorbit=True
                 self._edit_namelist("planet_namelist","NFIXORB",str(self.fixedorbit*1))
+                self._edit_namelist("radmod_namelist","NSOURCES",str(self.nlights))
             
             if key=="sourcefile":
                 self.sourcefile=value
@@ -3764,6 +3773,7 @@ References
         cfg.append(str(self.meananomaly0))
         cfg.append(str(self.nbody))
         cfg.append(str(self.sourcefile))
+        cfg.append(str(self.nlights))
         
         print("Writing configuration....\n"+"\n".join(cfg))
         print("Writing to %s...."%filename)
@@ -4002,9 +4012,10 @@ class System(Model):
     
     def _RADEC(self,source):
         sourcevec = (source - self.pxyz).T
-        dist2 = np.dot(sourcevec,sourcevec,axis=0)
-        nlen2 = np.dot(self.north,self.north,axis=0)
-        decl = -(np.arccos(np.dot(sourcevec,self.north,axis=0)/np.sqrt(dist2*nlen2))-0.5*np.pi)
+        nvec = self.north.T
+        dist2 = np.einsum('ij,ij->j',sourcevec,sourcevec) #col-wise dot product of sourcevec with itself (x*x)
+        nlen2 = np.einsum('ij,ij->j',nvec,nvec) #row-wise dot product of north vector with itself (N*N)
+        decl = -(np.arccos(np.einsum('ij,ij->j',sourcevec,nvec)/np.sqrt(dist2*nlen2))-0.5*np.pi) #-(arccos(r*N/sqrt((r*r)(N*N)))-pi/2)
         ra = np.arctan2(sourcevec[1,:]*np.cos(decl)-sourcevec[2,:]*np.sin(decl),sourcevec[0,:])
         return ra,decl
     
@@ -4058,9 +4069,8 @@ class System(Model):
         """
         if n>self.nlights+1:
             raise Exception("Attempting to set more sources than the model was compiled for.")
-        if n not in sources:
-            self.sources[n] = {"xyz":np.array([]),"RA":np.array([]),"DEC":np.array([]),
-                               "R":np.array([]),"L":np.array([]),"S":np.array([])}
+        self.sources[n] = {"xyz":np.array([]),"RA":np.array([]),"DEC":np.array([]),
+                           "R":np.array([]),"L":np.array([]),"S":np.array([])}
         self.sources[n]["R"] = radius
         self.sources[n]["L"] = luminosity
         self.sources[n]["xyz"] = np.column_stack((np.array(x),np.array(y),np.array(z)))
@@ -4247,12 +4257,14 @@ class System(Model):
                 print(f"Warning: source {n} wasn't set. Deleting it.")
             
             self.sources[n]["RA"],self.sources[n]["DEC"] = self._RADEC(self.sources[n]["xyz"])
-            distance2 = np.dot(self.sources[n]["xyz"],self.sources[n]["xyz"],axis=1)
-            self.sources[n]["S"] = self.sources["L"]*1361.1665/distance2 #At 1 AU, 1 Lsun=1361.1665 W/m^2
+            distance2 = np.einsum('ij,ij->i',self.sources[n]["xyz"],self.sources[n]["xyz"]) #row-wise dot product
+            self.sources[n]["S"] = self.sources[n]["L"]*1361.1665/distance2 #At 1 AU, 1 Lsun=1361.1665 W/m^2
             self.sources[n]["dist"] = np.sqrt(distance2)
             self.sources[n]["ext"] = 2*np.arctan(self.sources[n]["R"]*0.00465047/self.sources[n]["dist"]) #Angular diameter
             #At this stage we have not computed any eclipses.
         numcomparisons = np.math.factorial(self.nlights)//(2*np.math.factorial(max(self.nlights-2,0)))
+        
+        self.eclipsetrees = {}
         
         if numcomparisons>0 and compute_eclipses: #Possibility of eclipses
             self.pairs = []
@@ -4268,7 +4280,7 @@ class System(Model):
                     ra = self.sources[n]["RA"]
                     rb = self.sources[k]["RA"]
                     self.angseparations[j,:] = np.arccos(np.sin(da)*np.sin(db)+np.cos(da)*np.cos(db)*np.cos(ra-rb))
-                    self.relseparations[j,:] = self.angseparations[j,:]/(0.5*(self.sources[n]["ext"]+self.sources[k]["ext"])
+                    self.relseparations[j,:] = self.angseparations[j,:]/(0.5*(self.sources[n]["ext"]+self.sources[k]["ext"]))
                     self.pairs.append((n,k))
                     #If the relative separation of the pair is less than the sum of their angular radii then they're eclipsing
                     self.eclipses[j,:] = 1.0*(self.relseparations[j,:]<1.0)
@@ -4277,6 +4289,8 @@ class System(Model):
             for j,pair in enumerate(self.pairs):
                 idx = np.argwhere(self.eclipses[j,:]>0)
                 for n in idx:
+                    if n not in self.eclipsetrees:
+                        self.eclipsetrees[n] = {}
                     if self.eclipses[j,n[0]]==2.:
                         #We have already flagged this pair as being associated with a compound eclipse.
                         #We don't need to go and check it for its own associated pairs, because
@@ -4301,8 +4315,16 @@ class System(Model):
                     area = self._exacteclipse(r1,r2,d)
                     if self.sources[pair[0]]["dist"][n[0]]>self.sources[pair[1]]["dist"][n[0]]:
                         self.sources[pair[0]]["S"][n[0]] *= 1-area/(np.pi*r1**2)
+                        if pair[0] not in self.eclipsetrees[n]:
+                            self.eclipsetrees[n][pair[0]] = [pair[1],]
+                        else:
+                            self.eclipsetrees[n][pair[0]].append(pair[1])
                     else:
                         self.sources[pair[1]]["S"][n[0]] *= 1-area/(np.pi*r2**2)
+                        if pair[1] not in self.eclipsetrees[n]:
+                            self.eclipsetrees[n][pair[1]] = [pair[0],]
+                        else:
+                            self.eclipsetrees[n][pair[1]].append(pair[0])
                     
                     
             #Go to each timestep with a compound eclipse and do the math
@@ -4315,6 +4337,10 @@ class System(Model):
                 parentkeys = []
                 parentdists = []
                 children = {}
+                
+                if n not in self.eclipsetrees:
+                    self.eclipsetrees[n] = {}
+                
                 kx = np.where(self.eclipses[:,n]>1)[0]
                 for j in kx:
                     #For each pair associated with a compound eclipse, assign parent-child relationship
@@ -4325,12 +4351,18 @@ class System(Model):
                     else:
                         parent = self.pairs[j][1]
                         child = self.pairs[j][0]
+                        
+                    if parent not in self.eclipsetrees[n]:
+                        self.eclipsetrees[n][parent] = [child,]
+                    else:
+                        self.eclipsetrees[n][parent].append(child)
+                        
                     if parent not in parents:
                         parents[parent] = {"radius":self.sources[parent]["ext"][n]*0.5,
                                           "RA":self.sources[parent]["RA"][n],
                                           "DEC":self.sources[parent]["DEC"][n],
                                           "children":[child,],
-                                          "children_seps":[self.angseparations[j,n],]
+                                          "children_seps":[self.angseparations[j,n],],
                                           "children_dists":[self.sources[child]["dist"][n],]}
                         parentkeys.append(parent)
                         parentdists.append(self.sources[parent]["dist"][n])
@@ -4390,14 +4422,12 @@ class System(Model):
         for n in range(len(self.sources[0]["RA"])):
             inputtext.append([])
             for k in range(len(self.sources)):
-                inputtext[-1] += f"{self.sources[k]['RA'][n]} {self.sources[k]['DEC'][n]} {self.sources[k]['S'][n]}"
+                inputtext[-1].append(f"{self.sources[k]['RA'][n]} {self.sources[k]['DEC'][n]} {self.sources[k]['S'][n]}")
             inputtext[-1] = " ".join(inputtext[-1])
         inputtext = "\n".join(inputtext)
         with open(f"{self.workdir}/sources.dat","w") as datf:
             datf.write(inputtext)
             
         return inputtext
-                            
                         
-                        _
         

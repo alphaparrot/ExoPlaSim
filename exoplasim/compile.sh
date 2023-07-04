@@ -76,7 +76,7 @@ nopt=0
 years=10
 nmars=0
 
-while getopts "p:r:v:n:O:t:dhm" opt; do
+while getopts "p:r:v:n:s:O:t:dhm" opt; do
     case $opt in
         p)
             case $OPTARG in
@@ -195,6 +195,9 @@ while getopts "p:r:v:n:O:t:dhm" opt; do
             optimization="-"$OPTARG
             nopt=1
             ;;
+        s)
+            nlights=$OPTARG
+            ;;
         h)
             echo "$helptext"
             exit 0
@@ -204,8 +207,6 @@ while getopts "p:r:v:n:O:t:dhm" opt; do
             export PLAMOD=p_mars
             nmars=1
             ;;
-        s)
-            nlights=$OPTARG
         \?)
             echo "UNRECOGNIZED ARGUMENT PASSED: "$OPTARG
             ;;
