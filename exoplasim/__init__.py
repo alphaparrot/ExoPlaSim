@@ -152,11 +152,13 @@ class Model(object):
     
 
     """
-    def __init__(self,resolution="T21",layers=10,nlights=1,ncpus=4,precision=8,debug=False,inityear=0,
+    def __init__(self,resolution="T21",layers=10,nlights=1,nsteps=1,ncpus=4,precision=8,debug=False,inityear=0,
                 recompile=False,optimization=None,mars=False,workdir="most",source=None,force991=False,
                 modelname="MOST_EXP",outputtype=".npz",crashtolerant=False):
         
         global sourcedir
+        
+        self.runsteps = nsteps
         
         self.nlights=nlights
         if self.nlights<1:
@@ -334,8 +336,8 @@ class Model(object):
         if not source:
             source = "%s/plasim/run"%sourcedir
         
-        self.executable = source+"/most_plasim_t%d_l%d_s%d_p%d.x"%(self.nsp,self.layers,
-                                                                   self.nlights,ncpus)
+        self.executable = source+"/most_plasim_t%d_l%d_s%d_p%d_%dsteps.x"%(self.nsp,self.layers,
+                                                                   self.nlights,ncpus,self.runsteps)
         
         #if self.burn7:
             #burnsource = "%s/postprocessor"%sourcedir
@@ -2388,7 +2390,7 @@ References
         self._edit_namelist("planet_namelist","NGENKEPLERIAN",str(keplerian*1))
         self.keplerian=keplerian
         
-        self._edit_namelist("planet_namelist","NBODY",str(nbody*1))
+        self._edit_namelist("radmod_namelist","NBODY",str(nbody*1))
         self.nbody=nbody
         
         if self.keplerian or self.nbody:
@@ -3087,7 +3089,7 @@ References
                 self._edit_namelist("planet_namelist","NGENKEPLERIAN",str(self.keplerian*1))
             if key=="nbody":
                 self.nbody=value
-                self._edit_namelist("planet_namelist","NBODY",str(self.nbody*1))
+                self._edit_namelist("radmod_namelist","NBODY",str(self.nbody*1))
                 self.fixedorbit=True
                 self._edit_namelist("planet_namelist","NFIXORB",str(self.fixedorbit*1))
                 self._edit_namelist("radmod_namelist","NSOURCES",str(self.nlights))
@@ -3999,7 +4001,7 @@ class System(Model):
     
     All positions in AU and all stellar parameters in solar units."""
     def __init__(self,**kwargs):
-        super(System,self).__init__(**kwargs)
+        self.init_kwargs = kwargs
         self.sources = {}
         for n in range(self.nlights):
             self.sources[n] = {"xyz":np.array([]),"RA":np.array([]),"DEC":np.array([]),
@@ -4150,10 +4152,12 @@ class System(Model):
         float
             The intersecting area of the two circles
         '''
+        if (separation+min(radius1,radius2))<=max(radius1,radius2)+1.0e-5*min(radius1,radius2):
+            return np.pi*min(radius1,radius2)**2
         part1 = radius1**2*np.arccos((separation**2+radius1**2-radius2**2)/(2*separation*radius1))
         part2 = radius2**2*np.arccos((separation**2-radius1**2+radius2**2)/(2*separation*radius2))
         part3 = 0.5*np.sqrt((radius1+radius2-separation)*(radius1-radius2+separation)*\
-                           (-radius1+radius1+spearation)*(radius1+radius2+separation))
+                           (-radius1+radius1+separation)*(radius1+radius2+separation))
         area = part1+part2+part3
         return area
     
@@ -4257,7 +4261,7 @@ class System(Model):
                 print(f"Warning: source {n} wasn't set. Deleting it.")
             
             self.sources[n]["RA"],self.sources[n]["DEC"] = self._RADEC(self.sources[n]["xyz"])
-            distance2 = np.einsum('ij,ij->i',self.sources[n]["xyz"],self.sources[n]["xyz"]) #row-wise dot product
+            distance2 = np.einsum('ij,ij->i',self.sources[n]["xyz"]-self.pxyz,self.sources[n]["xyz"]-self.pxyz) #row-wise dot product
             self.sources[n]["S"] = self.sources[n]["L"]*1361.1665/distance2 #At 1 AU, 1 Lsun=1361.1665 W/m^2
             self.sources[n]["dist"] = np.sqrt(distance2)
             self.sources[n]["ext"] = 2*np.arctan(self.sources[n]["R"]*0.00465047/self.sources[n]["dist"]) #Angular diameter
@@ -4289,8 +4293,8 @@ class System(Model):
             for j,pair in enumerate(self.pairs):
                 idx = np.argwhere(self.eclipses[j,:]>0)
                 for n in idx:
-                    if n not in self.eclipsetrees:
-                        self.eclipsetrees[n] = {}
+                    if n[0] not in self.eclipsetrees:
+                        self.eclipsetrees[n[0]] = {}
                     if self.eclipses[j,n[0]]==2.:
                         #We have already flagged this pair as being associated with a compound eclipse.
                         #We don't need to go and check it for its own associated pairs, because
@@ -4314,17 +4318,17 @@ class System(Model):
                     d = self.angseparations[j,n[0]]
                     area = self._exacteclipse(r1,r2,d)
                     if self.sources[pair[0]]["dist"][n[0]]>self.sources[pair[1]]["dist"][n[0]]:
-                        self.sources[pair[0]]["S"][n[0]] *= 1-area/(np.pi*r1**2)
-                        if pair[0] not in self.eclipsetrees[n]:
-                            self.eclipsetrees[n][pair[0]] = [pair[1],]
+                        self.sources[pair[0]]["S"][n[0]] *= 1-min(1,area/(np.pi*r1**2))
+                        if pair[0] not in self.eclipsetrees[n[0]]:
+                            self.eclipsetrees[n[0]][pair[0]] = [pair[1],]
                         else:
-                            self.eclipsetrees[n][pair[0]].append(pair[1])
+                            self.eclipsetrees[n[0]][pair[0]].append(pair[1])
                     else:
-                        self.sources[pair[1]]["S"][n[0]] *= 1-area/(np.pi*r2**2)
-                        if pair[1] not in self.eclipsetrees[n]:
-                            self.eclipsetrees[n][pair[1]] = [pair[0],]
+                        self.sources[pair[1]]["S"][n[0]] *= 1-min(1,area/(np.pi*r2**2))
+                        if pair[1] not in self.eclipsetrees[n[0]]:
+                            self.eclipsetrees[n[0]][pair[1]] = [pair[0],]
                         else:
-                            self.eclipsetrees[n][pair[1]].append(pair[0])
+                            self.eclipsetrees[n[0]][pair[1]].append(pair[0])
                     
                     
             #Go to each timestep with a compound eclipse and do the math
@@ -4416,8 +4420,11 @@ class System(Model):
                                 f,m = self._eclipse(source,occulter,npoints=npoints)
                                 mask += m
                             eclipsefraction += np.nansum(mask*1)/float(len(mask))
-                    self.sources[src]["S"][n] *= 1.0-eclipsefraction
-                    
+                    self.sources[src]["S"][n] *= 1.0-min(1,eclipsefraction)
+                
+        #Compile ExoPlaSim and write sources.dat
+        self.init_kwargs["nsteps"] = self.pxyz.shape[0]
+        super(System,self).__init__(self.init_kwargs)
         inputtext = []
         for n in range(len(self.sources[0]["RA"])):
             inputtext.append([])
@@ -4428,6 +4435,6 @@ class System(Model):
         with open(f"{self.workdir}/sources.dat","w") as datf:
             datf.write(inputtext)
             
-        return inputtext
+        #return inputtext
                         
         

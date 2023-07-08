@@ -1224,7 +1224,9 @@ plasimversion = "https://github.com/Edilbert/PLASIM/ : 15-Dec-2015"
          tfrc(2)      = 100.0 * day_24hr * frcmod !day_24hr
          tfrc(3:NLEV) =   0.0 * day_24hr * frcmod !day_24hr
       endif
-!
+
+      if (NSTEPS .gt. 1) n_run_steps = NSTEPS
+    
 
       if(NTRU==42) then
        nhdiff=16

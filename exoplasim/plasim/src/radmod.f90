@@ -30,6 +30,7 @@
       character(len=80) :: starfilehr = " " !Name of hi-res version of input spectrum
       
       real    :: gsol0   = 1367.0 ! solar constant (set in planet module)
+      real    :: gsols(NSTEPS,NLIGHTS) ! solar constants for each light source at each timestep
       real    :: solclat = 1.0    ! cos of lat of insolation if ncstsol=1
       real    :: solcdec = 1.0    ! cos of dec of insolation if ncstsol=1
       real    :: clgray  = -1.0   ! cloud grayness (-1 = computed)
@@ -63,6 +64,7 @@
                                   !  0 = daily mean insolation)
       integer :: ncstsol = 0      ! switch to set constant insolation
                                   ! on the whole planet (0/1)=(off/on)
+      integer :: nbody   = 0      ! switch to use N-body input ephemerides for light sources
       integer :: iyrbp   = -50    ! Year before present (1950 AD)
                                   ! default = 2000 AD
                                   
@@ -120,9 +122,9 @@
       real :: eccf=0.  ! Earth-sun distance factor ( i.e. (1/r)**2 )
       real :: orbnu=0. ! Earth true anomaly in radians.
       real :: lambm=0. ! Solar ecliptic longitude in radians
-      real :: rasc=0.  ! Solar right ascension in radians
+      real :: rasc(NSTEPS,NLIGHTS)  ! Solar right ascension in radians
       real :: zcdayf=0. ! Fractional day
-      real :: zdeclf=0. !Declination angle
+      real :: zdeclf(NSTEPS,NLIGHTS) !Declination angle
       integer :: iyrad ! Year AD to calculate orbit for
       logical, parameter :: log_print = .true.
                        ! Flag to print-out status information or not.
@@ -174,12 +176,27 @@
       real :: bb3(965) !Planck function for albedo wavelengths
       real :: kdata(2048,2)
       real :: kdata2(965,2)
-      
+      real :: ephemerides(NSTEPS,NLIGHTS*3)
+      real :: zrasc(  NSTEPS*NLIGHTS)
+      real :: zzdeclf(NSTEPS*NLIGHTS)
+      real :: zgsols( NSTEPS*NLIGHTS)
       
       real dl1,dl2,hinge,const1,const2,z1,z2,znet,wmin,lwmin,w1,w2,f1,f2,x
       integer k,nw,j
      
       if (mypid == NROOT) then
+      
+        !Ingest sources.dat if necessary
+        if (nbody>0.5) then
+           call readdat('sources.dat',NLIGHTS*3,NSTEPS,ephemerides)
+           do j=1,NSTEPS
+              do k=1,NLIGHTS
+                 zrasc(  (j-1)*NLIGHTS+k) = ephemerides(j, k*3 - 2)
+                 zzdeclf((j-1)*NLIGHTS+k) = ephemerides(j, k*3 - 1)
+                 zgsols( (j-1)*NLIGHTS+k) = ephemerides(j, k*3    )
+              enddo
+           enddo
+        endif
         
         constg = const/5772.0 !G star
         
@@ -542,6 +559,17 @@
       endif
       
       
+      if (nbody>0.5) then
+         call mpbcrn(zgsols, NLIGHTS*NSTEPS)
+         call mpbcrn(zzdeclf,NLIGHTS*NSTEPS)
+         call mpbcrn(zrasc,  NLIGHTS*NSTEPS)
+         
+         do j=1,NSTEPS
+            gsols( j,:) = zgsols( (j-1)*NLIGHTS+1 : j*NLIGHTS)
+            zdeclf(j,:) = zzdeclf((j-1)*NLIGHTS+1 : j*NLIGHTS)
+            rasc(  j,:) = zrasc(  (j-1)*NLIGHTS+1 : j*NLIGHTS)
+         enddo
+      endif
       
       call mpbcrn(zsolars,2)
       call mpbcr(zsolar1)
@@ -593,7 +621,7 @@
 !
 !**   0) define namelist
 !
-      namelist/radmod_nl/ndcycle,ncstsol,solclat,solcdec,no3,co2        &
+      namelist/radmod_nl/ndcycle,ncstsol,nbody,solclat,solcdec,no3,co2        &
      &               ,iyrbp,nswr,nlwr,nfixed,slowdown,nradice,npbroaden,desync    &
      &               ,a0o3,a1o3,aco3,bo3,co3,toffo3,o3scale,newrsc,necham,necham6   &
      &               ,nsol,nclouds,nswrcl,nrscat,rcl1,rcl2,acl2,clgray,tpofmt   &
@@ -733,6 +761,7 @@
 !
       call mpbci(ndcycle)
       call mpbci(ncstsol)
+      call mpbci(nbody)
       call mpbci(no3)
       call mpbci(nfixed)
       call mpbcr(fixedlon)
@@ -968,15 +997,11 @@
         dicec(:) = 0.0
       endif
 !
-!**   2) compute cosine of solar zenit angle for each gridpoint
-!
-      if(nsol==1) call solang
-!
-!**   3) compute ozon distribution
+!**   2) compute ozon distribution
 !
       if(no3<3) call mko3
 !
-!**   4) short wave radiation
+!**   3) short wave radiation
 !
 !     a) if clear sky diagnostic is switched on:
 !
@@ -989,7 +1014,18 @@
        zalb1(:) = dsalb(1,:)
        zalb2(:) = dsalb(2,:)
        dcc(:,:)=0.
-       if(nswr==1) call swr
+       if(nswr==1) then
+          !Reset fluxes
+          dfu(:,:) = 0.
+          dfd(:,:) = 0.
+          do k=1,NLIGHTS
+            !
+            !** compute cosine of solar zenit angle for each gridpoint
+            !
+            if(nsol==1) call solang(k)
+            call swr(k)
+          enddo
+       endif
        dclforc(:,1)=dswfl(:,NLEP)
        dclforc(:,3)=dswfl(:,1)
        dclforc(:,5)=dfu(:,1)
@@ -1006,7 +1042,18 @@
 !
 
       if(ntime == 1) call mksecond(zsec1,0.)
-      if(nswr==1) call swr
+      if(nswr==1) then
+        !Reset fluxes
+        dfu(:,:) = 0.
+        dfd(:,:) = 0.
+        do k=1,NLIGHTS
+           !
+           !** compute cosine of solar zenit angle for each gridpoint
+           !
+           if(nsol==1) call solang(k)
+           call swr(k)
+        enddo
+      endif
       if(ntime == 1) then
        call mksecond(zsec1,zsec1)
        time4swr=time4swr+zsec1
@@ -1296,7 +1343,7 @@
 !     SUBROUTINE SOLANG
 !     =================
 
-      subroutine solang
+      subroutine solang(nlight)
       use radmod
 !
 !     compute cosine of zenit angle including daily cycle
@@ -1314,6 +1361,9 @@
 !     cola(NLPP) : cosine of latitude
 !
 !
+      integer nlight
+
+
 !**   1) compute day of the year and hour of the day
 !
       interface
@@ -1339,11 +1389,14 @@
 !
 !**   2) compute declination [radians]
 !
-      if (ngenkeplerian == 0) then
-          call orb_decl(zcday, eccen, mvelpp, lambm0, obliqr, orbnu, lambm, rasc, zdecl, eccf)
+      if (nbody == 1) then
+          zdecl = zdeclf(nstep,nlight)
+          zrasc = rasc(nstep,nlight)
+      else if (ngenkeplerian == 0) then
+          call orb_decl(zcday, eccen, mvelpp, lambm0, obliqr, orbnu, lambm, zrasc, zdecl, eccf)
       else
 !           write(6,*) meananom0r
-          call gen_orb_decl(zcday, eccen, obliqr, mvelpp, orbnu, lambm, rasc, zdecl, eccf)
+          call gen_orb_decl(zcday, eccen, obliqr, mvelpp, orbnu, lambm, zrasc, zdecl, eccf)
       endif
       zcdayf = zcday
       zdeclf = zdecl
@@ -1370,7 +1423,7 @@
         do jlon = 0 , NLON-1
          jhor = jhor + 1
          zhangle = zmins * zrtim + jlon * zrlon - PI
-         if (ngenkeplerian==1) zhangle = zhangle - rasc
+         if (ngenkeplerian==1 or nbody==1) zhangle = zhangle - zrasc
          if (zhangle < -PI) zhangle = zhangle + TWOPI
          if (zhangle > PI) zhangle = zhangle - TWOPI
          
@@ -1490,7 +1543,7 @@
 !     SUBROUTINE SWR
 !     ==============
 
-      subroutine swr
+      subroutine swr(nlight)
       use radmod
 !
 !     calculate short wave radiation fluxes
@@ -1532,6 +1585,9 @@
       parameter(aa=0.2542857142857143)
       parameter(bb=0.8229693877551021)
       parameter(c0=0.14997959183673468)
+      
+      integer nlight ! Which light source to use
+      real gsolfac
 !
       real zt1(NHOR,NLEP),zt2(NHOR,NLEP)    ! transmissivities 1-l
       real zr1s(NHOR,NLEP),zr2s(NHOR,NLEP)  ! reflexivities l-1 (scattered)
@@ -1615,8 +1671,13 @@
 !
 !     top solar radiation downward
 !
-      zftop1(:) = zsolar1 * gsol0 * gdist2 * zmu1(:) !Adjust down here for redder spectrum. --AYP
-      zftop2(:) = zsolar2 * gsol0 * gdist2 * zmu1(:)
+      if (nbody>0.5) then
+         gsolfac = gsols(nstep,nlight)
+      else
+         gsolfac = gsol0 * gdist2
+      endif
+      zftop1(:) = zsolar1 * gsolfac * zmu1(:) !Adjust down here for redder spectrum. --AYP
+      zftop2(:) = zsolar2 * gsolfac * zmu1(:)
 
 !     from this point on, all computations are made only for
 !     points with solar insolation > zero
@@ -1969,9 +2030,9 @@
         z1mrabr(:)=1./(1.-zr2s(:,jlev)*zrl2s(:,jlev))
         zfd2(:)=zt2(:,jlev)*z1mrabr(:)
         zfu2(:)=-zt2(:,jlev)*zrl2(:,jlev)*z1mrabr(:)
-        dfu(:,jlev)=zfu1(:)*zftop1(:)+zfu2(:)*zftop2(:)
-        dfd(:,jlev)=zfd1(:)*zftop1(:)+zfd2(:)*zftop2(:)
-        dswfl(:,jlev)=dfu(:,jlev)+dfd(:,jlev)
+        dfu(:,jlev) = dfu(:,jlev) + zfu1(:)*zftop1(:)+zfu2(:)*zftop2(:)
+        dfd(:,jlev) = dfd(:,jlev) + zfd1(:)*zftop1(:)+zfd2(:)*zftop2(:)
+        dswfl(:,jlev) = dfu(:,jlev)+dfd(:,jlev)
        endwhere
       enddo
 !

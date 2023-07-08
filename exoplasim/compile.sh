@@ -18,6 +18,8 @@
 #      -n:   Number of processing cores (MPI threads) to use. Default: 4
 #
 #      -s:   Number of light sources in the sky. Default: 1
+#    
+#      -l:   Length of simulation in number of timesteps. Default: 1 (unbounded)
 #
 #      -t:   Number of years to use in most_plasim_run script. Default: 10
 #
@@ -43,6 +45,8 @@ helptext=$(cat <<-END
       -v:   Set number of vertical levels. Default: 10
       
       -s:   Set number of light sources in the sky. Default: 1
+      
+      -l:   Set length of simulation in number of timesteps. Default: 1 (unbounded simulation length)
 
       -n:   Number of processing cores (MPI threads) to use. Default: 4
 
@@ -75,8 +79,9 @@ optimization=""
 nopt=0
 years=10
 nmars=0
+nsteps=1
 
-while getopts "p:r:v:n:s:O:t:dhm" opt; do
+while getopts "p:r:v:n:s:l:O:t:dhm" opt; do
     case $opt in
         p)
             case $OPTARG in
@@ -198,6 +203,9 @@ while getopts "p:r:v:n:s:O:t:dhm" opt; do
         s)
             nlights=$OPTARG
             ;;
+        l)
+            nsteps=$OPTARG
+            ;;
         h)
             echo "$helptext"
             exit 0
@@ -213,8 +221,8 @@ while getopts "p:r:v:n:s:O:t:dhm" opt; do
     esac
 done
 
-echo "PRODUCING: "$optimization" -r"$prec" -o most_plasim_"$resolution"_l"$levels"_s"$nlights"_p"$ncpus".x"
-executable="most_plasim_"$resolution"_l"$levels"_s"$nlights"_p"$ncpus".x"
+echo "PRODUCING: "$optimization" -r"$prec" -o most_plasim_"$resolution"_l"$levels"_s"$nlights"_p"$ncpus"_"$nsteps"steps.x"
+executable="most_plasim_"$resolution"_l"$levels"_s"$nlights"_p"$ncpus"_"$nsteps"steps.x"
 
 echo "Writing resmod.f90....."
 
@@ -251,6 +259,7 @@ echo "      parameter(NLAT_ATM = "$latitudes") ">>resmod.f90
 echo "      parameter(NLEV_ATM = "$levels") ">>resmod.f90
 echo "      parameter(NPRO_ATM = "$ncpus") ">>resmod.f90
 echo "      parameter(NLIGHTS = "$nlights") ">>resmod.f90
+echo "      parameter(NSTEPS = "$nsteps") ">>resmod.f90
 echo "      end module resmod ">>resmod.f90
 echo " ">>resmod.f90
 
