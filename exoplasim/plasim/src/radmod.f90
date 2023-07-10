@@ -16,8 +16,8 @@
 !
 
       parameter(SBK = 5.67E-8)  ! Stefan-Bolzman Const.
-!       parameter(zsolar1=0.517)  
-!       parameter(zsolar2=0.483)  
+      parameter(zsolar1=0.517)  
+      parameter(zsolar2=0.483)  
 
 !
 !*    2.2) namelist parameters (see *sub* radini)
@@ -94,7 +94,7 @@
 
       real, allocatable :: dqo3cl(:,:,:)   ! climatological O3 (used if NO3=2)
 
-      real :: zsolars(2) = 0.0             ! Container for storing solar constants
+      real :: zsolars(2*NLIGHTS) = 0.0             ! Container for storing solar constants
       
 !
 !*    2.4) scalars
@@ -105,9 +105,9 @@
       real :: time4swr = 0.      ! CPU time for short wave radiation
       real :: time4lwr = 0.      ! CPU time for long wave radiation
       
-      real :: zsolar1 = 0.517    ! spectral partitioning 1 (wl < 0.75mue)
-      real :: zsolar2 = 0.483    ! spectral partitioning 2 (wl > 0.75mue)
-      real :: rcoeff = 1.0       ! Rayleigh scattering coefficient for cross section dependence
+!       real :: zsolar1 = 0.517    ! spectral partitioning 1 (wl < 0.75mue)
+!       real :: zsolar2 = 0.483    ! spectral partitioning 2 (wl > 0.75mue)
+      real :: rcoeff(NLIGHTS) = 1.0       ! Rayleigh scattering coefficient for cross section dependence
       
 !
 !     2.5 orbital parameters
@@ -180,6 +180,7 @@
       real :: zrasc(  NSTEPS*NLIGHTS)
       real :: zzdeclf(NSTEPS*NLIGHTS)
       real :: zgsols( NSTEPS*NLIGHTS)
+      real :: startemps(NLIGHTS)
       
       real dl1,dl2,hinge,const1,const2,z1,z2,znet,wmin,lwmin,w1,w2,f1,f2,x
       integer k,nw,j
@@ -196,6 +197,7 @@
                  zgsols( (j-1)*NLIGHTS+k) = ephemerides(j, k*3    )
               enddo
            enddo
+           call readdat('startemps.dat',1,NLIGHTS,startemps)
         endif
         
         constg = const/5772.0 !G star
@@ -236,324 +238,328 @@
            ! Scan through high-res wavelengths and re-sample to bb3 wavelengths
            call readdat(starfile,2,965,kdata2)
            bb3(:) = kdata2(:,2)
-            
-        else   ! Use blackbody spectrum
               
-           !snowalbedos(:) = 0.25*(fsnowalb(:)+2.0*msnowalb(:)+csnowalb(:)) !assume mostly med-grain
-           
-!            const1 = 2*planckh*(cc**2)
-           const2 = const/starbbtemp
-           
-           do k=1,1024 !Compute the Planck function
-             bb1(k) = 1.0/wvm1(k) * 1.0/(exp(const2/wv1(k))-1) !const1/wv1(k)**5
-             bb2(k) = 1.0/wvm2(k) * 1.0/(exp(const2/wv2(k))-1)
-!              write(nud,*) wv1(k),bb1(k),wv2(k),bb2(k)
-           enddo      !The scaling and units don't actually matter, because we're going to normalize
-           
-           do k=1,965 !Compute the Planck function for the wavelengths at which we have albedo data
-             bb3(k) = 1.0/(wavelengths(k))**5 * 1.0/(exp(1.0e6*const2/wavelengths(k))-1)
+        do klight=1,NLIGHTS
+        
+               
+           if (not lstarfile)   ! Use blackbody spectrum
+              !snowalbedos(:) = 0.25*(fsnowalb(:)+2.0*msnowalb(:)+csnowalb(:)) !assume mostly med-grain
+              
+!               const1 = 2*planckh*(cc**2)
+              if (nbody>0.5) starbbtemp = startemps(klight)
+              const2 = const/starbbtemp
+              
+              do k=1,1024 !Compute the Planck function
+                bb1(k) = 1.0/wvm1(k) * 1.0/(exp(const2/wv1(k))-1) !const1/wv1(k)**5
+                bb2(k) = 1.0/wvm2(k) * 1.0/(exp(const2/wv2(k))-1)
+!                 write(nud,*) wv1(k),bb1(k),wv2(k),bb2(k)
+              enddo      !The scaling and units don't actually matter, because we're going to normalize
+              
+              do k=1,965 !Compute the Planck function for the wavelengths at which we have albedo data
+                bb3(k) = 1.0/(wavelengths(k))**5 * 1.0/(exp(1.0e6*const2/wavelengths(k))-1)
+              enddo
+              
+           endif
+           a1 = 0.0
+           a2 = 0.0
+           do k=1,41 !Compute insolation-weighted albedo below 0.75 microns
+!              a1 = a1 + 0.5*(bb3(k)*fsnowalb(k)+bb3(k+1)*fsnowalb(k+1))* &
+!      &                 1.0e-6*(wavelengths(k+1)-wavelengths(k))
+               a1 = a1 + 0.5*(bb3(k)*iceblend(k)+bb3(k+1)*iceblend(k+1))* &
+       &                 1.0e-6*(wavelengths(k+1)-wavelengths(k))
+           enddo
+           do k=42,964 !Compute insolation-weighted albedo above 0.75 microns
+!              a2 = a2 + 0.5*(bb3(k)*fsnowalb(k)+bb3(k+1)*fsnowalb(k+1)))* &
+!      &                 1.0e-6*(wavelengths(k+1)-wavelengths(k))
+               a2 = a2 + 0.5*(bb3(k)*iceblend(k)+bb3(k+1)*iceblend(k+1))* &
+       &                 1.0e-6*(wavelengths(k+1)-wavelengths(k))
            enddo
            
-        endif
-        a1 = 0.0
-        a2 = 0.0
-        do k=1,41 !Compute insolation-weighted albedo below 0.75 microns
-!           a1 = a1 + 0.5*(bb3(k)*fsnowalb(k)+bb3(k+1)*fsnowalb(k+1))* &
-!      &              1.0e-6*(wavelengths(k+1)-wavelengths(k))
-            a1 = a1 + 0.5*(bb3(k)*iceblend(k)+bb3(k+1)*iceblend(k+1))* &
-       &              1.0e-6*(wavelengths(k+1)-wavelengths(k))
-        enddo
-        do k=42,964 !Compute insolation-weighted albedo above 0.75 microns
-!           a2 = a2 + 0.5*(bb3(k)*fsnowalb(k)+bb3(k+1)*fsnowalb(k+1)))* &
-!      &              1.0e-6*(wavelengths(k+1)-wavelengths(k))
-            a2 = a2 + 0.5*(bb3(k)*iceblend(k)+bb3(k+1)*iceblend(k+1))* &
-       &              1.0e-6*(wavelengths(k+1)-wavelengths(k))
-        enddo
-        
-        z1 = 0.0
-        z2 = 0.0
-        
-        zg1 = 0.0
-        zg2 = 0.0
-        
-        zcross1 = 0.0
-        zcross2 = 0.0
-        
-        zgcross1 = 0.0
-        zgcross2 = 0.0
-        
-        do k=1,1023    !Do a trapezoidal integration above and below 0.75 microns
-          z1 = z1 + 0.5*(bb1(k)+bb1(k+1))*(wv1(k+1)-wv1(k))
-          z2 = z2 + 0.5*(bb2(k)+bb2(k+1))*(wv2(k+1)-wv2(k))
-          zg1 = zg1 + 0.5*(bbg1(k)+bbg1(k+1))*(wv1(k+1)-wv1(k))
-          zg2 = zg2 + 0.5*(bbg2(k)+bbg2(k+1))*(wv2(k+1)-wv2(k))
-          zcross1 = zcross1 + 0.5*(bb1(k)/((wv1(k)*1.0e6)**4)+bb1(k+1)/((wv1(k+1)*1.0e6)**4)) &
-     &                         *(wv1(k+1)-wv1(k))
-          zcross2 = zcross2 + 0.5*(bb2(k)/((wv2(k)*1.0e6)**4)+bb2(k+1)/((wv2(k+1)*1.0e6)**4)) &
-     &                         *(wv2(k+1)-wv2(k))
-          zgcross1 = zgcross1+0.5*(bbg1(k)/((wv1(k)*1.0e6)**4)+bbg1(k+1)/((wv1(k+1)*1.0e6)**4)) &
-     &                         *(wv1(k+1)-wv1(k))
-          zgcross2 = zgcross2+0.5*(bbg2(k)/((wv2(k)*1.0e6)**4)+bbg2(k+1)/((wv2(k+1)*1.0e6)**4)) &
-     &                         *(wv2(k+1)-wv2(k))
-        enddo
-        z1 = z1 + 0.5*(bb1(1024)+bb2(1))*(wv2(1)-wv1(1024))
-        zcross1 = zcross1+0.5*(bb1(1024)/((wv1(1024)*1.0e6)**4)+bb2(1)/((wv2(1)*1.0e6)**4)) &
-     &                         *(wv2(1)-wv1(1024))
-        zg1 = zg1 + 0.5*(bbg1(1024)+bbg2(1))*(wv2(1)-wv1(1024))
-        zgcross1 = zgcross1+0.5*(bbg1(1024)/((wv1(1024)*1.0e6)**4)+bbg2(1)/((wv2(1)*1.0e6)**4)) &
-     &                         *(wv2(1)-wv1(1024))
-        
-        zg = zg1+zg2
-        zgcross = zgcross1 + zgcross2
-        zchi = zgcross / zg !spectrum-weighted cross section for 5772 K
-        rcoeff = (zcross1 + zcross2) * zsolar1 / z1 / zchi !Using default zsolar=0.517 here
-        
-        ! effective optical depth is the spectral average of the cross-section, normalized to 
-        ! 5772 K input blackbody. There's already a spectral dependence due to z1/z2 partitioning,
-        ! so we compute the true weighting and normalize to the partitioning and solar result
-!         
-!         We want tau = <sigma>/<sigma_g>*tau_g, where 
-!         
-!                        int_0^inf[F(w) w^-4 dw] 
-!             <sigma> = -------------------------
-!                          int_0^inf[F(w) dw]    
+           z1 = 0.0
+           z2 = 0.0
+           
+           zg1 = 0.0
+           zg2 = 0.0
+           
+           zcross1 = 0.0
+           zcross2 = 0.0
+           
+           zgcross1 = 0.0
+           zgcross2 = 0.0
+           
+           do k=1,1023    !Do a trapezoidal integration above and below 0.75 microns
+             z1 = z1 + 0.5*(bb1(k)+bb1(k+1))*(wv1(k+1)-wv1(k))
+             z2 = z2 + 0.5*(bb2(k)+bb2(k+1))*(wv2(k+1)-wv2(k))
+             zg1 = zg1 + 0.5*(bbg1(k)+bbg1(k+1))*(wv1(k+1)-wv1(k))
+             zg2 = zg2 + 0.5*(bbg2(k)+bbg2(k+1))*(wv2(k+1)-wv2(k))
+             zcross1 = zcross1 + 0.5*(bb1(k)/((wv1(k)*1.0e6)**4)+bb1(k+1)/((wv1(k+1)*1.0e6)**4)) &
+     &                            *(wv1(k+1)-wv1(k))
+             zcross2 = zcross2 + 0.5*(bb2(k)/((wv2(k)*1.0e6)**4)+bb2(k+1)/((wv2(k+1)*1.0e6)**4)) &
+     &                            *(wv2(k+1)-wv2(k))
+             zgcross1 = zgcross1+0.5*(bbg1(k)/((wv1(k)*1.0e6)**4)+bbg1(k+1)/((wv1(k+1)*1.0e6)**4)) &
+     &                            *(wv1(k+1)-wv1(k))
+             zgcross2 = zgcross2+0.5*(bbg2(k)/((wv2(k)*1.0e6)**4)+bbg2(k+1)/((wv2(k+1)*1.0e6)**4)) &
+     &                            *(wv2(k+1)-wv2(k))
+           enddo
+           z1 = z1 + 0.5*(bb1(1024)+bb2(1))*(wv2(1)-wv1(1024))
+           zcross1 = zcross1+0.5*(bb1(1024)/((wv1(1024)*1.0e6)**4)+bb2(1)/((wv2(1)*1.0e6)**4)) &
+     &                            *(wv2(1)-wv1(1024))
+           zg1 = zg1 + 0.5*(bbg1(1024)+bbg2(1))*(wv2(1)-wv1(1024))
+           zgcross1 = zgcross1+0.5*(bbg1(1024)/((wv1(1024)*1.0e6)**4)+bbg2(1)/((wv2(1)*1.0e6)**4)) &
+     &                            *(wv2(1)-wv1(1024))
+           
+           zg = zg1+zg2
+           zgcross = zgcross1 + zgcross2
+           zchi = zgcross / zg !spectrum-weighted cross section for 5772 K
+           rcoeff(klight) = (zcross1 + zcross2) * zsolar1 / z1 / zchi !Using default zsolar=0.517 here
+           
+           ! effective optical depth is the spectral average of the cross-section, normalized to 
+           ! 5772 K input blackbody. There's already a spectral dependence due to z1/z2 partitioning,
+           ! so we compute the true weighting and normalize to the partitioning and solar result
+!            
+!            We want tau = <sigma>/<sigma_g>*tau_g, where 
+!            
+!                           int_0^inf[F(w) w^-4 dw] 
+!                <sigma> = -------------------------
+!                             int_0^inf[F(w) dw]    
+!                             
+!            so:
+!            
+!                   int_0^inf[F(w) w^-4 dw]        int_0^inf[F_g(w) dw]
+!            tau = ------------------------- x --------------------------- x tau_g
+!                     int_0^inf[F(w) dw]        int_0^inf[F_g(w) w^-4 dw]
+!            
+!            We need to somehow account for the fact that we have two bands, especially because that
+!            will impart a Z1/Z1_g scaling all on its own. We can do this by multiplying by 1:
+!            
+!                   int_0^w2[F(w) dw]     int_0^inf[F(w) w^-4 dw]        int_0^inf[F_g(w) dw]
+!            tau = ------------------- x ------------------------- x -------------------------- x tau_g
+!                   int_0^w2[F(w) dw]       int_0^inf[F(w) dw]        int_0^inf[F_g(w) w^-4 dw]
+!                   
+!            when we rearrange:
+!             
+!                   int_0^w2[F(w) dw]      int_0^inf[F(w) w^-4 dw]        int_0^inf[F_g(w) dw]
+!            tau = -------------------- x ------------------------ x -------------------------- x tau_g
+!                   int_0^inf[F(w) dw]        int_0^w2[F(w) dw]        int_0^inf[F_g(w) w^-4 dw]       
+!            
+!            This new first term out front is equal to Z1, the partitioning fraction. So 
+!             
+!                         int_0^inf[F(w) w^-4 dw]        int_0^inf[F_g(w) dw]
+!            tau =  Z1 x ------------------------- x --------------------------- x tau_g
+!                            int_0^w2[F(w) dw]        int_0^inf[F_g(w) w^-4 dw]       
+!                   
+!            We also know that PlaSim's energy partitioning scheme will impart a factor of Z1/Z1_g, so
+!            if we know what we really have is
+!            
+!                       Z1
+!            tau = R x ---- x tau_g
+!                      Z1_g
+!            
+!            then we can solve for R:
+!            
+!                         int_0^inf[F(w) w^-4 dw]        int_0^inf[F_g(w) dw]
+!            R =  Z1_g x ------------------------- x --------------------------- 
+!                            int_0^w2[F(w) dw]        int_0^inf[F_g(w) w^-4 dw]  
+!          
+!                           zcross1 + zcross2          zg1 + zg2
+!              = zsolar1 x ------------------- x ---------------------
+!                                  z1             zgcross1 + zgcross2
 !                          
-!         so:
-!         
-!                int_0^inf[F(w) w^-4 dw]        int_0^inf[F_g(w) dw]
-!         tau = ------------------------- x --------------------------- x tau_g
-!                  int_0^inf[F(w) dw]        int_0^inf[F_g(w) w^-4 dw]
-!         
-!         We need to somehow account for the fact that we have two bands, especially because that
-!         will impart a Z1/Z1_g scaling all on its own. We can do this by multiplying by 1:
-!         
-!                int_0^w2[F(w) dw]     int_0^inf[F(w) w^-4 dw]        int_0^inf[F_g(w) dw]
-!         tau = ------------------- x ------------------------- x -------------------------- x tau_g
-!                int_0^w2[F(w) dw]       int_0^inf[F(w) dw]        int_0^inf[F_g(w) w^-4 dw]
-!                
-!         when we rearrange:
-!          
-!                int_0^w2[F(w) dw]      int_0^inf[F(w) w^-4 dw]        int_0^inf[F_g(w) dw]
-!         tau = -------------------- x ------------------------ x -------------------------- x tau_g
-!                int_0^inf[F(w) dw]        int_0^w2[F(w) dw]        int_0^inf[F_g(w) w^-4 dw]       
-!         
-!         This new first term out front is equal to Z1, the partitioning fraction. So 
-!          
-!                      int_0^inf[F(w) w^-4 dw]        int_0^inf[F_g(w) dw]
-!         tau =  Z1 x ------------------------- x --------------------------- x tau_g
-!                         int_0^w2[F(w) dw]        int_0^inf[F_g(w) w^-4 dw]       
-!                
-!         We also know that PlaSim's energy partitioning scheme will impart a factor of Z1/Z1_g, so
-!         if we know what we really have is
-!         
-!                    Z1
-!         tau = R x ---- x tau_g
-!                   Z1_g
-!         
-!         then we can solve for R:
-!         
-!                      int_0^inf[F(w) w^-4 dw]        int_0^inf[F_g(w) dw]
-!         R =  Z1_g x ------------------------- x --------------------------- 
-!                         int_0^w2[F(w) dw]        int_0^inf[F_g(w) w^-4 dw]  
-!
-!                        zcross1 + zcross2          zg1 + zg2
-!           = zsolar1 x ------------------- x ---------------------
-!                               z1             zgcross1 + zgcross2
-!                       
-        zdenom1 = 0.01/z1
-        zdenom2 = 0.01/z2
-        
-        a1 = zdenom1*a1 !Percent -> Decimal; normalization
-        a2 = zdenom2*a2
-        
-        znet = z1+z2
-        
-        z1 = z1/znet
-        z2 = 1.0-z1
-        
-        zsolar1 = z1
-        zsolar2 = z2
-        
-        write(nud,*) "Energy fraction below 0.75 microns:",zsolar1
-        write(nud,*) "Energy fraction above 0.75 microns:",zsolar2
-        write(nud,*) "Rayleigh scattering coefficient:",rcoeff
-        
-        zsolars(1) = zsolar1
-        zsolars(2) = zsolar2
-        
-        dsnowalb(1) = a1
-        dsnowalb(2) = a2
-        
-        write(nud,*) "Snow albedo below 0.75 microns:",dsnowalb(1)
-        write(nud,*) "Snow albedo above 0.75 microns:",dsnowalb(2)
-        write(nud,*) "Overall snow albedo:",z1*dsnowalb(1)+z2*dsnowalb(2)
-        
-        if (nsimplealbedo>0.5) dsnowalb(:) = z1*a1 + z2*a2
-        
-        a1 = 0.0
-        a2 = 0.0
-        do k=1,41 !Compute insolation-weighted albedo below 0.75 microns
-            a1 = a1 + 0.5*(bb3(k)*iceblendmin(k)+bb3(k+1)*iceblendmin(k+1))* &
-       &              1.0e-6*(wavelengths(k+1)-wavelengths(k))
+           zdenom1 = 0.01/z1
+           zdenom2 = 0.01/z2
+           
+           a1 = zdenom1*a1 !Percent -> Decimal; normalization
+           a2 = zdenom2*a2
+           
+           znet = z1+z2
+           
+           z1 = z1/znet
+           z2 = 1.0-z1
+           
+!            zsolar1 = z1
+!            zsolar2 = z2
+           
+           zsolars(2*klight-1) = z1
+           zsolars(2*klight) = z2
+           
+           write(nud,*) "Energy fraction below 0.75 microns:",zsolars(2*klight-1)
+           write(nud,*) "Energy fraction above 0.75 microns:",zsolars(2*klight)
+           write(nud,*) "Rayleigh scattering coefficient:",rcoeff(klight)
+           
+           
+           dsnowalb(2*klight-1) = a1
+           dsnowalb(2*klight) = a2
+           
+           write(nud,*) "Snow albedo below 0.75 microns:",dsnowalb(2*klight-1)
+           write(nud,*) "Snow albedo above 0.75 microns:",dsnowalb(2*klight)
+           write(nud,*) "Overall snow albedo:",z1*dsnowalb(2*klight-1)+z2*dsnowalb(2*klight)
+           
+           if (nsimplealbedo>0.5) dsnowalb(2*klight-1:2*klight) = z1*a1 + z2*a2
+           
+           a1 = 0.0
+           a2 = 0.0
+           do k=1,41 !Compute insolation-weighted albedo below 0.75 microns
+               a1 = a1 + 0.5*(bb3(k)*iceblendmin(k)+bb3(k+1)*iceblendmin(k+1))* &
+       &                 1.0e-6*(wavelengths(k+1)-wavelengths(k))
+           enddo
+           do k=42,964 !Compute insolation-weighted albedo above 0.75 microns
+               a2 = a2 + 0.5*(bb3(k)*iceblendmin(k)+bb3(k+1)*iceblendmin(k+1))* &
+       &                 1.0e-6*(wavelengths(k+1)-wavelengths(k))
+           enddo
+           a1 = zdenom1*a1 !Percent -> Decimal; normalization
+           a2 = zdenom2*a2
+           
+           dsnowalbmn(2*klight-1) = a1
+           dsnowalbmn(2*klight) = a2
+           
+           write(nud,*) "Minimum snow albedo below 0.75 microns:",dsnowalbmn(2*klight-1)
+           write(nud,*) "Minimum snow albedo above 0.75 microns:",dsnowalbmn(2*klight)
+           write(nud,*) "Overall minimum snow albedo:",z1*dsnowalbmn(2*klight-1)+z2*dsnowalbmn(2*klight)
+           
+           if (nsimplealbedo>0.5) dsnowalbmn(2*klight-1:2*klight) = z1*a1 + z2*a2
+           
+           a1 = 0.0
+           a2 = 0.0
+           do k=1,41 !Compute insolation-weighted albedo below 0.75 microns
+               a1 = a1 + 0.5*(bb3(k)*iceblendmax(k)+bb3(k+1)*iceblendmax(k+1))* &
+       &                 1.0e-6*(wavelengths(k+1)-wavelengths(k))
+           enddo
+           do k=42,964 !Compute insolation-weighted albedo above 0.75 microns
+               a2 = a2 + 0.5*(bb3(k)*iceblendmax(k)+bb3(k+1)*iceblendmax(k+1))* &
+       &                 1.0e-6*(wavelengths(k+1)-wavelengths(k))
+           enddo
+           a1 = zdenom1*a1 !Percent -> Decimal; normalization
+           a2 = zdenom2*a2
+           
+           dsnowalbmx(2*klight-1) = a1
+           dsnowalbmx(2*klight) = a2
+           
+           write(nud,*) "Maximum snow albedo below 0.75 microns:",dsnowalbmx(2*klight-1)
+           write(nud,*) "Maximum snow albedo above 0.75 microns:",dsnowalbmx(2*klight)
+           write(nud,*) "Overall maximum snow albedo:",z1*dsnowalbmx(2*klight-1)+z2*dsnowalbmx(2*klight)
+                   
+           if (nsimplealbedo>0.5) dsnowalbmx(2*klight-1:2*klight) = z1*a1 + z2*a2
+           
+           a1 = 0.0
+           a2 = 0.0
+           do k=1,41 !Compute insolation-weighted albedo below 0.75 microns
+               a1 = a1 + 0.5*(bb3(k)*seaicemin(k)+bb3(k+1)*seaicemin(k+1))* &
+       &                 1.0e-6*(wavelengths(k+1)-wavelengths(k))
+           enddo
+           do k=42,964 !Compute insolation-weighted albedo above 0.75 microns
+               a2 = a2 + 0.5*(bb3(k)*seaicemin(k)+bb3(k+1)*seaicemin(k+1))* &
+       &                 1.0e-6*(wavelengths(k+1)-wavelengths(k))
+           enddo
+           a1 = zdenom1*a1 !Percent -> Decimal; normalization
+           a2 = zdenom2*a2
+           
+           dicealbmn(2*klight-1) = a1
+           dicealbmn(2*klight) = a2
+           
+           write(nud,*) "Minimum sea ice albedo below 0.75 microns:",dicealbmn(2*klight-1)
+           write(nud,*) "Minimum sea ice albedo above 0.75 microns:",dicealbmn(2*klight)
+           write(nud,*) "Overall minimum sea ice albedo:",z1*dicealbmn(2*klight-1)+z2*dicealbmn(2*klight)
+           
+           if (nsimplealbedo>0.5) dicealbmn(2*klight-1:2*klight) = z1*a1 + z2*a2
+           
+           a1 = 0.0
+           a2 = 0.0
+           do k=1,41 !Compute insolation-weighted albedo below 0.75 microns
+               a1 = a1 + 0.5*(bb3(k)*seaicemax(k)+bb3(k+1)*seaicemax(k+1))* &
+       &                 1.0e-6*(wavelengths(k+1)-wavelengths(k))
+           enddo
+           do k=42,964 !Compute insolation-weighted albedo above 0.75 microns
+               a2 = a2 + 0.5*(bb3(k)*seaicemax(k)+bb3(k+1)*seaicemax(k+1))* &
+       &                 1.0e-6*(wavelengths(k+1)-wavelengths(k))
+           enddo
+           a1 = zdenom1*a1 !Percent -> Decimal; normalization
+           a2 = zdenom2*a2
+           
+           dicealbmx(2*klight-1) = a1
+           dicealbmx(2*klight) = a2
+           
+           write(nud,*) "Maximum sea ice albedo below 0.75 microns:",dicealbmx(2*klight-1)
+           write(nud,*) "Maximum sea ice albedo above 0.75 microns:",dicealbmx(2*klight)
+           write(nud,*) "Overall maximum sea ice albedo:",z1*dicealbmx(2*klight-1)+z2*dicealbmx(2*klight)
+           
+           if (nsimplealbedo>0.5) dicealbmx(2*klight-1:2*klight) = z1*a1 + z2*a2
+           
+           a1 = 0.0
+           a2 = 0.0
+           do k=1,41 !Compute insolation-weighted albedo below 0.75 microns
+               a1 = a1 + 0.5*(bb3(k)*glacalbmin(k)+bb3(k+1)*glacalbmin(k+1))* &
+       &                 1.0e-6*(wavelengths(k+1)-wavelengths(k))
+           enddo
+           do k=42,964 !Compute insolation-weighted albedo above 0.75 microns
+               a2 = a2 + 0.5*(bb3(k)*glacalbmin(k)+bb3(k+1)*glacalbmin(k+1))* &
+       &                 1.0e-6*(wavelengths(k+1)-wavelengths(k))
+           enddo
+           a1 = zdenom1*a1 !Percent -> Decimal; normalization
+           a2 = zdenom2*a2
+           
+           dglacalbmn(2*klight-1) = a1
+           dglacalbmn(2*klight  ) = a2
+           
+           write(nud,*) "Minimum glacier albedo below 0.75 microns:",dglacalbmn(2*klight-11)
+           write(nud,*) "Minimum glacier albedo above 0.75 microns:",dglacalbmn(2*klight)
+           write(nud,*) "Overall minimum glacier albedo:",z1*dglacalbmn(2*klight-1)+z2*dglacalbmn(2*klight)
+           
+           if (nsimplealbedo>0.5) dglacalbmn(2*klight-1:2*klight) = z1*a1 + z2*a2
+           
+           a1 = 0.0
+           a2 = 0.0
+           do k=1,41 !Compute insolation-weighted albedo below 0.75 microns
+               a1 = a1 + 0.5*(bb3(k)*groundblend(k)+bb3(k+1)*groundblend(k+1))* &
+       &                 1.0e-6*(wavelengths(k+1)-wavelengths(k))
+           enddo
+           do k=42,964 !Compute insolation-weighted albedo above 0.75 microns
+               a2 = a2 + 0.5*(bb3(k)*groundblend(k)+bb3(k+1)*groundblend(k+1))* &
+       &                 1.0e-6*(wavelengths(k+1)-wavelengths(k))
+           enddo
+           a1 = zdenom1*a1 !Percent -> Decimal; normalization
+           a2 = zdenom2*a2
+           
+           dgroundalb(2*klight-1) = a1
+           dgroundalb(2*klight) = a2
+           
+           write(nud,*) "Ground albedo below 0.75 microns:",dgroundalb(2*klight-1)
+           write(nud,*) "Ground albedo above 0.75 microns:",dgroundalb(2*klight)
+           write(nud,*) "Overall ground albedo:",z1*dgroundalb(2*klight-1)+z2*dgroundalb(2*klight)
+           
+           if (nsimplealbedo>0.5) dgroundalb(2*klight-1:2*klight) = z1*a1 + z2*a2
+           
+           a1 = 0.0
+           a2 = 0.0
+           do k=1,41 !Compute insolation-weighted albedo below 0.75 microns
+               a1 = a1 + 0.5*(bb3(k)*oceanblend(k)+bb3(k+1)*oceanblend(k+1))* &
+       &                 1.0e-6*(wavelengths(k+1)-wavelengths(k))
+           enddo
+           do k=42,964 !Compute insolation-weighted albedo above 0.75 microns
+               a2 = a2 + 0.5*(bb3(k)*oceanblend(k)+bb3(k+1)*oceanblend(k+1))* &
+       &                 1.0e-6*(wavelengths(k+1)-wavelengths(k))
+           enddo
+           a1 = zdenom1*a1 !Percent -> Decimal; normalization
+           a2 = zdenom2*a2
+           
+           doceanalb(2*klight-1) = a1
+           doceanalb(2*klight  ) = a2
+           
+           write(nud,*) "Ocean albedo below 0.75 microns:",doceanalb(2*klight-1)
+           write(nud,*) "Ocean albedo above 0.75 microns:",doceanalb(2*klight)
+           write(nud,*) "Overall ocean albedo:",z1*doceanalb(2*klight-1)+z2*doceanalb(2*klight)
+           
+           if (nsimplealbedo>0.5) doceanalb(2*klight-1:2*klight) = z1*a1 + z2*a2
         enddo
-        do k=42,964 !Compute insolation-weighted albedo above 0.75 microns
-            a2 = a2 + 0.5*(bb3(k)*iceblendmin(k)+bb3(k+1)*iceblendmin(k+1))* &
-       &              1.0e-6*(wavelengths(k+1)-wavelengths(k))
-        enddo
-        a1 = zdenom1*a1 !Percent -> Decimal; normalization
-        a2 = zdenom2*a2
         
-        dsnowalbmn(1) = a1
-        dsnowalbmn(2) = a2
-        
-        write(nud,*) "Minimum snow albedo below 0.75 microns:",dsnowalbmn(1)
-        write(nud,*) "Minimum snow albedo above 0.75 microns:",dsnowalbmn(2)
-        write(nud,*) "Overall minimum snow albedo:",z1*dsnowalbmn(1)+z2*dsnowalbmn(2)
-        
-        if (nsimplealbedo>0.5) dsnowalbmn(:) = z1*a1 + z2*a2
-        
-        a1 = 0.0
-        a2 = 0.0
-        do k=1,41 !Compute insolation-weighted albedo below 0.75 microns
-            a1 = a1 + 0.5*(bb3(k)*iceblendmax(k)+bb3(k+1)*iceblendmax(k+1))* &
-       &              1.0e-6*(wavelengths(k+1)-wavelengths(k))
-        enddo
-        do k=42,964 !Compute insolation-weighted albedo above 0.75 microns
-            a2 = a2 + 0.5*(bb3(k)*iceblendmax(k)+bb3(k+1)*iceblendmax(k+1))* &
-       &              1.0e-6*(wavelengths(k+1)-wavelengths(k))
-        enddo
-        a1 = zdenom1*a1 !Percent -> Decimal; normalization
-        a2 = zdenom2*a2
-        
-        dsnowalbmx(1) = a1
-        dsnowalbmx(2) = a2
-        
-        write(nud,*) "Maximum snow albedo below 0.75 microns:",dsnowalbmx(1)
-        write(nud,*) "Maximum snow albedo above 0.75 microns:",dsnowalbmx(2)
-        write(nud,*) "Overall maximum snow albedo:",z1*dsnowalbmx(1)+z2*dsnowalbmx(2)
-                
-        if (nsimplealbedo>0.5) dsnowalbmx(:) = z1*a1 + z2*a2
-        
-        a1 = 0.0
-        a2 = 0.0
-        do k=1,41 !Compute insolation-weighted albedo below 0.75 microns
-            a1 = a1 + 0.5*(bb3(k)*seaicemin(k)+bb3(k+1)*seaicemin(k+1))* &
-       &              1.0e-6*(wavelengths(k+1)-wavelengths(k))
-        enddo
-        do k=42,964 !Compute insolation-weighted albedo above 0.75 microns
-            a2 = a2 + 0.5*(bb3(k)*seaicemin(k)+bb3(k+1)*seaicemin(k+1))* &
-       &              1.0e-6*(wavelengths(k+1)-wavelengths(k))
-        enddo
-        a1 = zdenom1*a1 !Percent -> Decimal; normalization
-        a2 = zdenom2*a2
-        
-        dicealbmn(1) = a1
-        dicealbmn(2) = a2
-        
-        write(nud,*) "Minimum sea ice albedo below 0.75 microns:",dicealbmn(1)
-        write(nud,*) "Minimum sea ice albedo above 0.75 microns:",dicealbmn(2)
-        write(nud,*) "Overall minimum sea ice albedo:",z1*dicealbmn(1)+z2*dicealbmn(2)
-        
-        if (nsimplealbedo>0.5) dicealbmn(:) = z1*a1 + z2*a2
-        
-        a1 = 0.0
-        a2 = 0.0
-        do k=1,41 !Compute insolation-weighted albedo below 0.75 microns
-            a1 = a1 + 0.5*(bb3(k)*seaicemax(k)+bb3(k+1)*seaicemax(k+1))* &
-       &              1.0e-6*(wavelengths(k+1)-wavelengths(k))
-        enddo
-        do k=42,964 !Compute insolation-weighted albedo above 0.75 microns
-            a2 = a2 + 0.5*(bb3(k)*seaicemax(k)+bb3(k+1)*seaicemax(k+1))* &
-       &              1.0e-6*(wavelengths(k+1)-wavelengths(k))
-        enddo
-        a1 = zdenom1*a1 !Percent -> Decimal; normalization
-        a2 = zdenom2*a2
-        
-        dicealbmx(1) = a1
-        dicealbmx(2) = a2
-        
-        write(nud,*) "Maximum sea ice albedo below 0.75 microns:",dicealbmx(1)
-        write(nud,*) "Maximum sea ice albedo above 0.75 microns:",dicealbmx(2)
-        write(nud,*) "Overall maximum sea ice albedo:",z1*dicealbmx(1)+z2*dicealbmx(2)
-        
-        if (nsimplealbedo>0.5) dicealbmx(:) = z1*a1 + z2*a2
-        
-        a1 = 0.0
-        a2 = 0.0
-        do k=1,41 !Compute insolation-weighted albedo below 0.75 microns
-            a1 = a1 + 0.5*(bb3(k)*glacalbmin(k)+bb3(k+1)*glacalbmin(k+1))* &
-       &              1.0e-6*(wavelengths(k+1)-wavelengths(k))
-        enddo
-        do k=42,964 !Compute insolation-weighted albedo above 0.75 microns
-            a2 = a2 + 0.5*(bb3(k)*glacalbmin(k)+bb3(k+1)*glacalbmin(k+1))* &
-       &              1.0e-6*(wavelengths(k+1)-wavelengths(k))
-        enddo
-        a1 = zdenom1*a1 !Percent -> Decimal; normalization
-        a2 = zdenom2*a2
-        
-        dglacalbmn(1) = a1
-        dglacalbmn(2) = a2
-        
-        write(nud,*) "Minimum glacier albedo below 0.75 microns:",dglacalbmn(1)
-        write(nud,*) "Minimum glacier albedo above 0.75 microns:",dglacalbmn(2)
-        write(nud,*) "Overall minimum glacier albedo:",z1*dglacalbmn(1)+z2*dglacalbmn(2)
-        
-        if (nsimplealbedo>0.5) dglacalbmn(:) = z1*a1 + z2*a2
-        
-        a1 = 0.0
-        a2 = 0.0
-        do k=1,41 !Compute insolation-weighted albedo below 0.75 microns
-            a1 = a1 + 0.5*(bb3(k)*groundblend(k)+bb3(k+1)*groundblend(k+1))* &
-       &              1.0e-6*(wavelengths(k+1)-wavelengths(k))
-        enddo
-        do k=42,964 !Compute insolation-weighted albedo above 0.75 microns
-            a2 = a2 + 0.5*(bb3(k)*groundblend(k)+bb3(k+1)*groundblend(k+1))* &
-       &              1.0e-6*(wavelengths(k+1)-wavelengths(k))
-        enddo
-        a1 = zdenom1*a1 !Percent -> Decimal; normalization
-        a2 = zdenom2*a2
-        
-        dgroundalb(1) = a1
-        dgroundalb(2) = a2
-        
-        write(nud,*) "Ground albedo below 0.75 microns:",dgroundalb(1)
-        write(nud,*) "Ground albedo above 0.75 microns:",dgroundalb(2)
-        write(nud,*) "Overall ground albedo:",z1*dgroundalb(1)+z2*dgroundalb(2)
-        
-        if (nsimplealbedo>0.5) dgroundalb(:) = z1*a1 + z2*a2
-        
-        a1 = 0.0
-        a2 = 0.0
-        do k=1,41 !Compute insolation-weighted albedo below 0.75 microns
-            a1 = a1 + 0.5*(bb3(k)*oceanblend(k)+bb3(k+1)*oceanblend(k+1))* &
-       &              1.0e-6*(wavelengths(k+1)-wavelengths(k))
-        enddo
-        do k=42,964 !Compute insolation-weighted albedo above 0.75 microns
-            a2 = a2 + 0.5*(bb3(k)*oceanblend(k)+bb3(k+1)*oceanblend(k+1))* &
-       &              1.0e-6*(wavelengths(k+1)-wavelengths(k))
-        enddo
-        a1 = zdenom1*a1 !Percent -> Decimal; normalization
-        a2 = zdenom2*a2
-        
-        doceanalb(1) = a1
-        doceanalb(2) = a2
-        
-        write(nud,*) "Ocean albedo below 0.75 microns:",doceanalb(1)
-        write(nud,*) "Ocean albedo above 0.75 microns:",doceanalb(2)
-        write(nud,*) "Overall ocean albedo:",z1*doceanalb(1)+z2*doceanalb(2)
-        
-        if (nsimplealbedo>0.5) doceanalb(:) = z1*a1 + z2*a2
-        
-        
-        call put_restart_array("zsolars",zsolars,2,2,1)
-        call put_restart_array('dsnowalb',dsnowalb,2,2,1)
-        call put_restart_array('dsnowalbmn',dsnowalbmn,2,2,1)
-        call put_restart_array('dsnowalbmx',dsnowalbmx,2,2,1)
-        call put_restart_array('dicealbmn',dicealbmn,2,2,1)
-        call put_restart_array('dicealbmx',dicealbmx,2,2,1)
-        call put_restart_array('dglacalbmn',dglacalbmn,2,2,1)
-        call put_restart_array('dgroundalb',dgroundalb,2,2,1)
-        call put_restart_array('doceanalb',doceanalb,2,2,1)
+        call put_restart_array("zsolars",zsolars,2*NLIGHTS,2*NLIGHTS,1)
+        call put_restart_array('dsnowalb',dsnowalb,2*NLIGHTS,2*NLIGHTS,1)
+        call put_restart_array('dsnowalbmn',dsnowalbmn,2*NLIGHTS,2*NLIGHTS,1)
+        call put_restart_array('dsnowalbmx',dsnowalbmx,2*NLIGHTS,2*NLIGHTS,1)
+        call put_restart_array('dicealbmn',dicealbmn,2*NLIGHTS,2*NLIGHTS,1)
+        call put_restart_array('dicealbmx',dicealbmx,2*NLIGHTS,2*NLIGHTS,1)
+        call put_restart_array('dglacalbmn',dglacalbmn,2*NLIGHTS,2*NLIGHTS,1)
+        call put_restart_array('dgroundalb',dgroundalb,2*NLIGHTS,2*NLIGHTS,1)
+        call put_restart_array('doceanalb',doceanalb,2*NLIGHTS,2*NLIGHTS,1)
                                
         
       endif
@@ -571,18 +577,18 @@
          enddo
       endif
       
-      call mpbcrn(zsolars,2)
-      call mpbcr(zsolar1)
-      call mpbcr(zsolar2)
-      call mpbcr(rcoeff)
-      call mpbcrn(dsnowalb,2)
-      call mpbcrn(dsnowalbmn,2)
-      call mpbcrn(dsnowalbmx,2)
-      call mpbcrn(dglacalbmn,2)
-      call mpbcrn(dicealbmn,2)
-      call mpbcrn(dicealbmx,2)
-      call mpbcrn(dgroundalb,2)
-      call mpbcrn(doceanalb,2)
+      call mpbcrn(zsolars,2*NLIGHTS)
+!       call mpbcr(zsolar1)
+!       call mpbcr(zsolar2)
+      call mpbcrn(rcoeff,NLIGHTS)
+      call mpbcrn(dsnowalb,2*NLIGHTS)
+      call mpbcrn(dsnowalbmn,2*NLIGHTS)
+      call mpbcrn(dsnowalbmx,2*NLIGHTS)
+      call mpbcrn(dglacalbmn,2*NLIGHTS)
+      call mpbcrn(dicealbmn,2*NLIGHTS)
+      call mpbcrn(dicealbmx,2*NLIGHTS)
+      call mpbcrn(dgroundalb,2*NLIGHTS)
+      call mpbcrn(doceanalb,2*NLIGHTS)
       
 !       call mpputgp('zsolars',zsolars,2,1)
 !       call mpputgp('dsnowalb',dsnowalb,2,1)
@@ -822,8 +828,8 @@
 !             call get_restart_array('dglacalbmn',dglacalbmn,2,2,1)
 !             call get_restart_array('dgroundalb',dgroundalb,2,2,1)
 !             call get_restart_array('doceanalb',doceanalb,2,2,1)
-!             zsolar1 = zsolars(1)
-!             zsolar2 = zsolars(2)
+!             zsolar1 = zsolars(2*nlight-1)
+!             zsolar2 = zsolars(2*nlight)
 !             write(nud,*) "Read zsolar1 from restart: ",zsolar1
 !             write(nud,*) "Read zsolar2 from restart: ",zsolar2
 !             write(nud,*) "Read snow albedo <0.75 um from restart: ",dsnowalb(1)
@@ -864,17 +870,21 @@
       else if (nstartemp > 0) then
         call solarini
       else
-        call mpbcr(zsolar1)
-        call mpbcr(zsolar2)
-        call mpbcr(rcoeff)
-        call mpbcrn(dsnowalb,2)
-        call mpbcrn(dsnowalbmn,2)
-        call mpbcrn(dsnowalbmx,2)
-        call mpbcrn(dglacalbmn,2)
-        call mpbcrn(dicealbmn,2)
-        call mpbcrn(dicealbmx,2)
-        call mpbcrn(dgroundalb,2)
-        call mpbcrn(doceanalb,2)
+!         call mpbcr(zsolar1)
+        do klight=1,NLIGHTS
+           zsolars(2*klight-1) = 0.517
+           zsolars(2*klight  ) = 0.483
+        enddo
+        call mpbcrn(zsolars,2*NLIGHTS)
+        call mpbcrn(rcoeff,NLIGHTS)
+        call mpbcrn(dsnowalb,2*NLIGHTS)
+        call mpbcrn(dsnowalbmn,2*NLIGHTS)
+        call mpbcrn(dsnowalbmx,2*NLIGHTS)
+        call mpbcrn(dglacalbmn,2*NLIGHTS)
+        call mpbcrn(dicealbmn,2*NLIGHTS)
+        call mpbcrn(dicealbmx,2*NLIGHTS)
+        call mpbcrn(dgroundalb,2*NLIGHTS)
+        call mpbcrn(doceanalb,2*NLIGHTS)
       endif
       
 !
@@ -1011,8 +1021,8 @@
        allocate(zalb1(NHOR))
        allocate(zalb2(NHOR))
        zcc(:,:)=dcc(:,:)
-       zalb1(:) = dsalb(1,:)
-       zalb2(:) = dsalb(2,:)
+       zalb1(:) = dsalb(2*nlight-1,:)
+       zalb2(:) = dsalb(2*nlight,:)
        dcc(:,:)=0.
        if(nswr==1) then
           !Reset fluxes
@@ -1031,8 +1041,8 @@
        dclforc(:,5)=dfu(:,1)
        dclforc(:,6)=dfu(:,NLEP)
        dcc(:,:)=zcc(:,:)
-       dsalb(1,:) = zalb1(:)
-       dsalb(2,:) = zalb2(:)
+       dsalb(2*nlight-1,:) = zalb1(:)
+       dsalb(2*nlight,:) = zalb2(:)
        deallocate(zalb1)
        deallocate(zalb2)
       end if
@@ -1676,8 +1686,8 @@
       else
          gsolfac = gsol0 * gdist2
       endif
-      zftop1(:) = zsolar1 * gsolfac * zmu1(:) !Adjust down here for redder spectrum. --AYP
-      zftop2(:) = zsolar2 * gsolfac * zmu1(:)
+      zftop1(:) = zsolars(2*nlight-1) * gsolfac * zmu1(:) !Adjust down here for redder spectrum. --AYP
+      zftop2(:) = zsolars(2*nlight  ) * gsolfac * zmu1(:)
 
 !     from this point on, all computations are made only for
 !     points with solar insolation > zero
@@ -1842,7 +1852,7 @@
 !
 !      R = 1 - e^((ps/p0)*ln(T0))
 !
-       zscf(:) = rcoeff*dp(:)/101100.0*9.80665/ga
+       zscf(:) = rcoeff(nlight)*dp(:)/101100.0*9.80665/ga
        zrcsu(:,NLEV)=zrcsu(:,NLEV) + (1.0-exp(zscf(:)*log(1.0-0.144))) &
      &                                *(1-newrsc)*nrscat*(1-dcc(:,NLEV)*nclouds)
        zrcs(:,NLEV)= zrcs(:,NLEV) + (1.0-exp(zscf(:)*log(1.0-(0.219/(1.+0.816*zmu0(:))))))&
@@ -1967,32 +1977,32 @@
 
 ! Currently: we use the same albedo for both spectral ranges.
 
-       zra1s(:)=dalb(:)*(1-nstartemp) + dsalb(1,:)*nstartemp
-       zra2s(:)=dalb(:)*(1-nstartemp) + dsalb(2,:)*nstartemp
+       zra1s(:)=dalb(nlight,:)*(1-nstartemp) + dsalb(2*nlight-1,:)*nstartemp
+       zra2s(:)=dalb(nlight,:)*(1-nstartemp) + dsalb(2*nlight  ,:)*nstartemp
        
 !
 !      set albedo for the direct beam (for ocean use ECHAM3 param unless necham=0)
-       dsalb(1,:)=dls(:)*dsalb(1,:)   +   (1.-dls(:)) * dicec(:)*dsalb(1,:)              &
+       dsalb(2*nlight-1,:)=dls(:)*dsalb(2*nlight-1,:)+(1.-dls(:))*dicec(:)*dsalb(2*nlight-1,:)              &
      &           + (1.-dls(:)) * (1.-dicec(:)) * AMIN1(0.05/(zmu0(:)+0.15),0.15)*necham*(1-necham6) &
      &           + (1.-dls(:)) * (1.-dicec(:)) * (1-necham)*necham6 &
      &  *(0.026/(zmu0(:)**1.7+0.065)+0.15*(zmu0(:)-1)*(zmu0(:)-0.5)*(zmu0(:)-0.1)+0.0082) &
-     &           + (1.-dls(:)) * (1.-dicec(:)) * (1.-necham)*(1-necham6)*dsalb(1,:)
-       dsalb(2,:)=dls(:)*dsalb(2,:)   +   (1.-dls(:)) * dicec(:)*dsalb(2,:)              &
+     &           + (1.-dls(:)) * (1.-dicec(:)) * (1.-necham)*(1-necham6)*dsalb(2*nlight-1,:)
+       dsalb(2*nlight,:)=dls(:)*dsalb(2*nlight,:)   +   (1.-dls(:)) * dicec(:)*dsalb(2*nlight,:)              &
      &           + (1.-dls(:)) * (1.-dicec(:)) * AMIN1(0.05/(zmu0(:)+0.15),0.15)*necham*(1-necham6) &
      &           + (1.-dls(:)) * (1.-dicec(:)) * (1-necham)*necham6 &
      &  *(0.026/(zmu0(:)**1.7+0.065)+0.15*(zmu0(:)-1)*(zmu0(:)-0.5)*(zmu0(:)-0.1)+0.0082) &
-     &           + (1.-dls(:)) * (1.-dicec(:)) * (1.-necham)*(1-necham6)*dsalb(2,:)
+     &           + (1.-dls(:)) * (1.-dicec(:)) * (1.-necham)*(1-necham6)*dsalb(2*nlight,:)
        
-       dalb(:) = (zsolars(1)*dsalb(1,:) + zsolars(2)*dsalb(2,:))*nstartemp  &
-     &           + (dls(:)*dalb(:)      + (1.-dls(:)) * dicec(:)*dalb(:)              &
+       dalb(nlight,:) = (zsolars(2*nlight-1)*dsalb(2*nlight-1,:) + zsolars(2*nlight)*dsalb(2*nlight,:))*nstartemp  &
+     &           + (dls(:)*dalb(nlight,:)      + (1.-dls(:)) * dicec(:)*dalb(nlight,:)              &
      &           + (1.-dls(:)) * (1.-dicec(:)) * AMIN1(0.05/(zmu0(:)+0.15),0.15)*necham*(1-necham6) &
      &           + (1.-dls(:)) * (1.-dicec(:)) * (1-necham)*necham6 &
      &  *(0.026/(zmu0(:)**1.7+0.065)+0.15*(zmu0(:)-1)*(zmu0(:)-0.5)*(zmu0(:)-0.1)+0.0082) &
-     &           + (1.-dls(:)) * (1.-dicec(:)) * (1.-necham)*(1-necham6)*dalb(:))*(1-nstartemp)
+     &           + (1.-dls(:)) * (1.-dicec(:)) * (1.-necham)*(1-necham6)*dalb(nlight,:))*(1-nstartemp)
        
      
-       zra1(:)=dsalb(1,:)*nstartemp + dalb(:)*(1-nstartemp)
-       zra2(:)=dsalb(2,:)*nstartemp + dalb(:)*(1-nstartemp)
+       zra1(:)=dsalb(2*nlight-1,:)*nstartemp + dalb(nlight,:)*(1-nstartemp)
+       zra2(:)=dsalb(2*nlight,:)*nstartemp + dalb(nlight,:)*(1-nstartemp)
          
 ! Ice-free ocean albedo is min(0.05/(phi+0.15), 0.15)--reflection and scattering is higher at low phi
        
