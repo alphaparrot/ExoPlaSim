@@ -106,7 +106,7 @@ The output of the aerosol module is a 4-D data cube called 'mmr'
 (for mass mixing ratio) and is in units of kg/kg. Here's a visualisation
 of an example output, from a simulation of TRAPPIST-1 e:
 
-.. image:: source/trap_mmrdemo.png
+.. image:: source/mmrdemo_trap.png
 
 The plot shows higher concentrations of haze particles at the high latitudes
 near the eastern terminator (lon 270), where the particles collect in standing Rossby
