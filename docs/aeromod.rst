@@ -116,8 +116,9 @@ Generating new optical constants
 ----------------------------------
 
 The hazeconstants folder in the exoplasim package directory already 
-contains haze constants from `(He et al. 2023) <https://arxiv.org/ftp/arxiv/papers/2301/2301.02745.pdf>`_ for a 300K water-rich atmosphere 
-calculated for GJ677c, TRAPPIST-1e, and Wolf 1061c for 10 different particle sizes.
+contains haze constants from `(He et al. 2023) <https://www.nature.com/articles/s41550-023-02140-4>`_ and 
+`(Corrales et al. 2023) https://iopscience.iop.org/article/10.3847/2041-8213/acaf86>`_ for a 300K water-rich atmosphere 
+calculated for TRAPPIST-1e and Wolf 1061c for 10 different particle sizes.
 The existing .dat files assume an N2 atmosphere (refractive index 1.00029, aka 1).
 The haze constants were calculated using the Python package `MiePython <https://miepython.readthedocs.io/en/latest/>`_
 assuming spherical haze particles. 
