@@ -73,22 +73,25 @@ def sysconfigure():
     try:
         cwd = os.getcwd()
         os.chdir(sourcedir)
-        if float(sys.version[:3])>=3.5 and float(sys.version[:3])<3.7:
-            print("./configure -v %s"%(sys.version[:3]))
-            result = subprocess.run(["./configure.sh -v %s"%(sys.version[:3])],shell=True,check=True,
+        pyversion = ".".join(sys.version.split(".")[:2])
+        for pyfftfile in glob.glob(os.path.join(sourcedir,"pyfft*.so")):
+            os.remove(pyfftfile)
+        if float(pyversion)>=3.5 and float(pyversion)<3.7:
+            print("./configure -v %s"%(pyversion))
+            result = subprocess.run(["./configure.sh -v %s"%(pyversion)],shell=True,check=True,
                                     stdout=subprocess.PIPE,stderr=subprocess.PIPE,
                                     universal_newlines=True)
             print(result.stdout)
             print(result.stderr)
-        elif float(sys.version[:3])>=3.7:
-            print("./configure -v %s"%(sys.version[:3]))
-            result = subprocess.run(["./configure.sh -v %s"%(sys.version[:3])],shell=True,check=True,
+        elif float(pyversion)>=3.7:
+            print("./configure -v %s"%(pyversion))
+            result = subprocess.run(["./configure.sh -v %s"%(pyversion)],shell=True,check=True,
                             capture_output=True,universal_newlines=True)
             print(result.stdout)
             print(result.stderr)
-        elif float(sys.version[:3])<3.5 and float(sys.version[:3])>=3.0:
-            print("./configure -v %s"%(sys.version[:3]))
-            os.system("./configure.sh -v %s"%(sys.version[0:3]))
+        elif float(pyversion)<3.5 and float(pyversion)>=3.0:
+            print("./configure -v %s"%(pyversion))
+            os.system("./configure.sh -v %s"%(pyversion))
             result=""
         else:
             print("./configure -v 3")
@@ -322,16 +325,19 @@ class Model(object):
                 cwd = os.getcwd()
                 os.chdir(sourcedir)
                 os.system("touch firstrun")
-                if float(sys.version[:3])>=3.5 and float(sys.version[:3])<3.7:
-                    print("./configure.sh -v %s"%(sys.version[:3]))
-                    subprocess.run(["./configure.sh -v %s"%(sys.version[:3])],shell=True,check=True)
-                elif float(sys.version[:3])>=3.7:
-                    print("./configure.sh -v %s"%(sys.version[:3]))
-                    subprocess.run(["./configure.sh -v %s"%(sys.version[:3])],shell=True,check=True,
+                pyversion = ".".join(sys.version.split(".")[:2])
+                for pyfftfile in glob.glob(os.path.join(sourcedir,"pyfft*.so")):
+                    os.remove(pyfftfile)
+                if float(pyversion)>=3.5 and float(pyversion)<3.7:
+                    print("./configure.sh -v %s"%(pyversion))
+                    subprocess.run(["./configure.sh -v %s"%(pyversion)],shell=True,check=True)
+                elif float(pyversion)>=3.7:
+                    print("./configure.sh -v %s"%(pyversion))
+                    subprocess.run(["./configure.sh -v %s"%(pyversion)],shell=True,check=True,
                                    capture_output=True)
-                elif float(sys.version[:3])<3.5 and float(sys.version[:3])>=3.0:
-                    print("./configure.sh -v %s"%(sys.version[0:3]))
-                    os.system("./configure.sh -v %s"%(sys.version[0:3]))
+                elif float(pyversion)<3.5 and float(pyversion)>=3.0:
+                    print("./configure.sh -v %s"%(pyversion))
+                    os.system("./configure.sh -v %s"%(pyversion))
                 else:
                     print("./configure.sh -v 3")
                     os.system("./configure.sh -v 3")
@@ -2289,7 +2295,7 @@ class Model(object):
                 scattering, backscatter, and g in bands 1 and 2. Several samples are included in exoplasim/hazeconstants.
             aerobulk : int, optional
                 Type of bulk atmosphere for aerosol suspension. If 1, N2 is assumed for the dominant
-                bulk molecule in the atmosphere. If 2, H2 is assumed.
+                bulk molecule in the atmosphere. If 2, H2 is assumed. If 3, CO2 is assumed.
             asource : int, optional
                 Type of haze source. If 1, photochemical haze is produced in the top model layer.
                 If 2, the aerosol is dust and is produced from the surface.
