@@ -1,3 +1,12 @@
+Version information
+==========================
+
+Release of ExoPlaSim with photochemical haze/dust transport and radiative transfer. Transport and radiative transfer schemes are described in **"Haze optical depth in exoplanet atmospheres varies with rotation rate: Implications for observations,"** Cohen et al. (2023). Submitted to The Astrophysical Journal.
+
+[![DOI](https://zenodo.org/badge/427416551.svg)](https://zenodo.org/badge/latestdoi/427416551)
+
+Follow the main branch at <http://github.com/alphaparrot/ExoPlaSim> for further developments and releases.
+
 EXOPLASIM
 =========
 
@@ -9,8 +18,6 @@ The PlaSim 3D general climate model, extended for terrestrial planets. This mode
 This model ships with a Python API, described below. Full documentation of the API is available at <http://exoplasim.readthedocs.io>.
 
 Documentation of the original PlaSim model is found in exoplasim/plasim/doc.
-
-[![DOI](https://zenodo.org/badge/97154456.svg)](https://zenodo.org/badge/latestdoi/97154456) [![Documentation Status](https://readthedocs.org/projects/exoplasim/badge/?version=stable)](https://exoplasim.readthedocs.io/en/stable/?badge=stable)
 
 ExoPlaSim Python API README
 ===========================
@@ -41,15 +48,6 @@ Compatibility
 -   Google Colaboratory: Yes (note that OpenMPI support on Colaboratory is limited due to automatic root privileges; look up how to run OpenMPI executables with root permissions and note that this is not recommended)
 -   Windows 10: Yes, via Windows Subsystem for Linux
 -   Mac OS X: Yes, requires Xcode and developer tools, and [OpenMPI support requires that Fortran-compatible libraries be built.](<https://www.open-mpi.org/faq/?category=osx#not-using-osx-bundled-ompi>) Tested on Mac OS X Catalina and Big Sur (with MacPorts, GCC10, OpenMPI, and Anaconda3), Apple M1 compatibility has not been tested.
-
-**New in 3.0:**
----------------
-
--   ExoPlaSim no longer depends on X11 libraries for installation and compilation!
--   Revamped [postprocessor](postprocessor.html) no longer depends on NetCDF-C libraries, and supports additional output formats (including netCDF, HDF5, NumPy archives, and archives of CSV files).
--   GCC and gfortran support through GCC 10.
--   Improved cross-platform compatibility
--   Numerous bugfixes
 
 Installation
 ------------
