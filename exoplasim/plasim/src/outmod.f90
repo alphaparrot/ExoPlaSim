@@ -8,8 +8,10 @@
 !     Output has always 32 bit precision
 
       integer (kind=4) :: ihead(8)   ! header of first data set
+      integer (kind=4) :: ihead2(8)  ! header for source variable
       real    (kind=4) :: zsig(NUGP) ! first block contains settings
-
+      real    (kind=4) :: sources(NLIGHTS)
+      
       call ntomin(nstep,nmin,nhour,nday,nmonth,nyear)
 
       ihead(1) = 333  ! ID for PUMA/PLASIM parameter block
@@ -27,21 +29,40 @@
       zsig(:)      = 0.0       ! initialize
       zsig(1:NLEV) = sigmah(:) ! vertical coordinate table
       zsig(NLEV+1) = m_days_per_year
+      
+      ihead2(1) = 49 !ID for light source block
+      ihead2(2) = 0
+      ihead2(3) = nday + 100 * nmonth + 10000 * nyear
+      ihead2(4) = 0
+      ihead2(5) = NLIGHTS
+      ihead2(6) = 1
+      ihead2(7) = 1
+      ihead2(8) = 1
+      
+      do k=1,NLIGHTS
+        sources(k) = k
+      enddo
 
       open  (40,file=plasim_output,form='unformatted')
       write (40) ihead(:)
       write (40) zsig(:)
+      write (40) ihead2(:)
+      write (40) sources(:)
       
       if (nsnapshot > 0) then
         open (140,file=plasim_snapshot,form='unformatted')
         write(140) ihead(:)
         write(140) zsig(:)
+        write(140) ihead2(:)
+        write(140) sources(:)
       endif
       
       if (nhcadence > 0) then
         open (141,file=plasim_hcadence,form='unformatted')
         write(141) ihead(:)
         write(141) zsig(:)
+        write(141) ihead2(:)
+        write(141) sources(:)
       endif
     
       return
@@ -62,8 +83,10 @@
 !     Output has always 32 bit precision
 
       integer (kind=4) :: ihead(8)   ! header of first data set
+      integer (kind=4) :: ihead2(8)
       real    (kind=4) :: zsig(NUGP) ! first block contains settings
-
+      real    (kind=4) :: sources(NLIGHTS)
+      
       call ntomin(nstep,nmin,nhour,nday,nmonth,nyear)
 
       ihead(1) = 333  ! ID for PUMA/PLASIM parameter block
@@ -82,11 +105,26 @@
       zsig(1:NLEV) = sigmah(:) ! vertical coordinate table
       zsig(NLEV+1) = m_days_per_year     
       
+      ihead2(1) = 49 !ID for light source block
+      ihead2(2) = 0
+      ihead2(3) = nday + 100 * nmonth + 10000 * nyear
+      ihead2(4) = 0
+      ihead2(5) = NLIGHTS
+      ihead2(6) = 1
+      ihead2(7) = 1
+      ihead2(8) = 1
+      
+      do k=1,NLIGHTS
+        sources(k) = k
+      enddo
+      
       write(hc_output,"(A17,I0.3)") "hurricane_output.",kstorms
       
       open(142,file=hc_output,form='unformatted')
       write(142) ihead(:)
       write(142) zsig(:)
+      write(142) ihead2(:)
+      write(142) sources(:)
       
       return
       end subroutine hcoutputini
@@ -642,10 +680,16 @@
 !       **********
 !       * albedo *
 !       **********
-      
-        call writegp(40,dalb,175,0)
-        call writegp(40,dsalb(1,:),174,0)
-        call writegp(40,dsalb(2,:),184,0)
+        
+        do klight=1,NLIGHTS
+           call writegp(40,dalb(:,klight),175,klight)
+        enddo
+        do klight=1,NLIGHTS
+           call writegp(40,dsalb(:,2*klight-1),174,klight)
+        enddo
+        do klight=1,NLIGHTS
+           call writegp(40,dsalb(:,2*klight),184,klight)
+        enddo
         
       else
       
@@ -674,11 +718,18 @@
 !       * albedo *
 !       **********
       
-        aadalb(:) = aadalb(:)/real(naccuout)
-        aadsalb1(:) = aadsalb1(:)/real(naccuout)
-        call writegp(40,aadalb,175,0)
-        call writegp(40,aadsalb1,174,0)
-        call writegp(40,aadsalb2,184,0)
+        do klight=1,NLIGHTS
+           aadalb(:,klight) = aadalb(:,klight)/real(naccuout)
+           call writegp(40,aadalb(:,klight),175,klight)
+        enddo
+        do klight=1,NLIGHTS
+           aadsalb1(:,klight) = aadsalb1(:,klight)/real(naccuout)
+           call writegp(40,aadsalb1(:,klight),174,klight)
+        enddo
+        do klight=1,NLIGHTS
+           aadsalb2(:,klight) = aadsalb2(:,klight)/real(naccuout)
+           call writegp(40,aadsalb2(:,klight),184,klight)
+        enddo
         
       endif
 
@@ -1417,10 +1468,15 @@
 !       **********
 !       * albedo *
 !       **********
-      
-        call writegp(140,dalb,175,0)
-        call writegp(140,dsalb(1,:),174,0)
-        call writegp(140,dsalb(2,:),184,0)
+        do klight = 1, NLIGHTS
+          call writegp(140,dalb(:,klight),175,klight)
+        enddo
+        do klight = 1, NLIGHTS
+          call writegp(140,dsalb(:,2*klight-1),174,klight)
+        enddo
+        do klight = 1, NLIGHTS
+          call writegp(140,dsalb(:,2*klight),184,klight)
+        enddo
         
 
 !     ***************************
@@ -1836,10 +1892,15 @@
 !       **********
 !       * albedo *
 !       **********
-      
-        call writegp(kunit,dalb,175,0)
-        call writegp(kunit,dsalb(1,:),174,0)
-        call writegp(kunit,dsalb(2,:),184,0)
+        do klight=1,NLIGHTS
+           call writegp(kunit,dalb(:,klight),175,klight)
+        enddo
+        do klight=1,NLIGHTS
+           call writegp(kunit,dsalb(:,2*klight-1),174,0)
+        enddo
+        do klight=1,NLIGHTS
+           call writegp(kunit,dsalb(:,2*klight),184,0)
+        enddo
         
 
 !     ***************************
@@ -2410,9 +2471,11 @@
         aadtd5(:)       = 0.
         aadls(:)        = 0.
         aadz0(:)        = 0.
-        aadalb(:)       = 0.
-        aadsalb1(:)     = 0.
-        aadsalb2(:)     = 0.
+        do k=1,NLIGHTS
+           aadalb(:,k)       = 0.
+           aadsalb1(:,k)     = 0.
+           aadsalb2(:,k)     = 0.
+        enddo
         aadtsoil(:)     = 0.
         aadtd2(:)       = 0.
         aadtd3(:)       = 0.
@@ -2528,10 +2591,12 @@
         aadust3(:)      = aadust3(:)      + dust3(:)         
         aadtd5(:)       = aadtd5(:)       + dtd5(:)      
         aadls(:)        = aadls(:)        + dls(:)       
-        aadz0(:)        = aadz0(:)        + dz0(:)       
-        aadalb(:)       = aadalb(:)       + dalb(:)
-        aadsalb1(:)     = aadsalb1(:)     + dsalb(1,:)
-        aadsalb2(:)     = aadsalb2(:)     + dsalb(2,:)
+        aadz0(:)        = aadz0(:)        + dz0(:)
+        do klight=1,NLIGHTS
+           aadalb(:  ,klight)       = aadalb(:,klight)        + dalb(:,klight  )
+           aadsalb1(:,klight)     = aadsalb1(:,klight)     + dsalb(:,2*klight-1)
+           aadsalb2(:,klight)     = aadsalb2(:,klight)     + dsalb(:,2*klight  )
+        enddo
         aadtsoil(:)     = aadtsoil(:)     + dtsoil(:)    
         aadtd2(:)       = aadtd2(:)       + dtd2(:)      
         aadtd3(:)       = aadtd3(:)       + dtd3(:)      

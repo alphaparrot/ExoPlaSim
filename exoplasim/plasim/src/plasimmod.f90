@@ -386,8 +386,10 @@
 !     * Radiation *
 !     *************
 
-      real :: dalb(NLIGHTS,NHOR)               ! albedo
-      real :: dsalb(2*NLIGHTS,NHOR)               ! spectral weighted albedo
+      real :: dalb(NHOR,NLIGHTS)               ! albedo
+      real :: dsalb(NHOR,2*NLIGHTS)            ! spectral weighted albedo
+      real :: dsalb1(NHOR,NLIGHTS)             ! band 1 albedos
+      real :: dsalb2(NHOR,NLIGHTS)             ! band 2 albedos
       real :: dsnowalb(2*NLIGHTS)           = 0.6  ! spectral weighted snow albedo
       real :: dgroundalb(2*NLIGHTS)         = 0.2  ! spectral weighted ground albedo
       real :: doceanalb(2*NLIGHTS)          = 0.069  ! spectral weighted ocean albedo
@@ -541,9 +543,9 @@
       real :: aadtd5(NHOR)        = 0.
       real :: aadls(NHOR)         = 0.
       real :: aadz0(NHOR)         = 0.
-      real :: aadalb(NHOR)        = 0.
-      real :: aadsalb1(NHOR)        = 0.
-      real :: aadsalb2(NHOR)        = 0.
+      real :: aadalb(NHOR,NLIGHTS)   = 0.
+      real :: aadsalb1(NHOR,NLIGHTS) = 0.
+      real :: aadsalb2(NHOR,NLIGHTS) = 0.
       real :: aadtsoil(NHOR)      = 0.
       real :: aadtd2(NHOR)        = 0.
       real :: aadtd3(NHOR)        = 0.

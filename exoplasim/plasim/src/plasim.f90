@@ -456,24 +456,27 @@ plasimversion = "https://github.com/Edilbert/PLASIM/ : 15-Dec-2015"
 
       if (mypid==NROOT) then
          write(nud,*) "==========Finalized Albedos=========="
+         do k=1,NLIGHTS
+         write(nud,*) "**********SOURCE ",k,"**************"
          write(nud,*) "-----For lambda < 0.75 microns------ "
-         write(nud,*) "Ground:",dgroundalb(1)
-         write(nud,*) "Ocean<;",doceanalb(1) 
-         write(nud,*) "Snow:",dsnowalb(1)
-         write(nud,*) "Snow max:",dsnowalbmx(1)
-         write(nud,*) "Snow min:",dsnowalbmn(1)
-         write(nud,*) "Sea ice max:",dicealbmx(1) 
-         write(nud,*) "Sea ice min:",dicealbmn(1) 
-         write(nud,*) "Glacier min:",dglacalbmn(1)
+         write(nud,*) "Ground:",dgroundalb(2*klight-1)
+         write(nud,*) "Ocean<;",doceanalb(2*klight-1) 
+         write(nud,*) "Snow:",dsnowalb(2*klight-1)
+         write(nud,*) "Snow max:",dsnowalbmx(2*klight-1)
+         write(nud,*) "Snow min:",dsnowalbmn(2*klight-1)
+         write(nud,*) "Sea ice max:",dicealbmx(2*klight-1) 
+         write(nud,*) "Sea ice min:",dicealbmn(2*klight-1) 
+         write(nud,*) "Glacier min:",dglacalbmn(2*klight-1)
          write(nud,*) "-----For lambda > 0.75 microns------ "
-         write(nud,*) "Ground:",dgroundalb(2)
-         write(nud,*) "Ocean<<<;",doceanalb(2) 
-         write(nud,*) "Snow:",dsnowalb(2)
-         write(nud,*) "Snow max:",dsnowalbmx(2)
-         write(nud,*) "Snow min:",dsnowalbmn(2)
-         write(nud,*) "Sea ice max:",dicealbmx(2) 
-         write(nud,*) "Sea ice min:",dicealbmn(2) 
-         write(nud,*) "Glacier min:",dglacalbmn(2)
+         write(nud,*) "Ground:",dgroundalb(2*klight)
+         write(nud,*) "Ocean<<<;",doceanalb(2*klight) 
+         write(nud,*) "Snow:",dsnowalb(2*klight)
+         write(nud,*) "Snow max:",dsnowalbmx(2*klight)
+         write(nud,*) "Snow min:",dsnowalbmn(2*klight)
+         write(nud,*) "Sea ice max:",dicealbmx(2*klight) 
+         write(nud,*) "Sea ice min:",dicealbmn(2*klight) 
+         write(nud,*) "Glacier min:",dglacalbmn(2*klight)
+         enddo
       endif      
   
 !
@@ -794,9 +797,13 @@ plasimversion = "https://github.com/Edilbert/PLASIM/ : 15-Dec-2015"
 !
       call mpputgp('dls'    ,dls    ,NHOR,1)
       call mpputgp('drhs'   ,drhs   ,NHOR,1)
-      call mpputgp('dalb'   ,dalb   ,NHOR,1)
-      call mpputgp('dsalb1',dsalb(1,:),NHOR,1)
-      call mpputgp('dsalb2',dsalb(2,:),NHOR,1)
+      call mpputgp('dalb'   ,dalb   ,NHOR,NLIGHTS)
+      do k=1,NLIGHTS
+         dsalb1(:,k) = dsalb(:,2*klight-1)
+         dsalb2(:,k) = dsalb(:,2*klight)
+      enddo
+      call mpputgp('dsalb1',dsalb1 ,NHOR,NLIGHTS)
+      call mpputgp('dsalb2',dsalb2 ,NHOR,NLIGHTS)
       call mpputgp('dz0'    ,dz0    ,NHOR,1)
       call mpputgp('dicec'  ,dicec  ,NHOR,1)
       call mpputgp('diced'  ,diced  ,NHOR,1)
@@ -864,9 +871,9 @@ plasimversion = "https://github.com/Edilbert/PLASIM/ : 15-Dec-2015"
       call mpputgp('aadtd5'      ,aadtd5  ,NHOR,1)      
       call mpputgp('aadls'       ,aadls   ,NHOR,1)       
       call mpputgp('aadz0'       ,aadz0   ,NHOR,1)       
-      call mpputgp('aadalb'      ,aadalb  ,NHOR,1)      
-      call mpputgp('aadsalb1'    ,aadsalb1,NHOR,1)    
-      call mpputgp('aadsalb2'    ,aadsalb2,NHOR,1)    
+      call mpputgp('aadalb'      ,aadalb  ,NHOR,NLIGHTS)      
+      call mpputgp('aadsalb1'    ,aadsalb1,NHOR,NLIGHTS)    
+      call mpputgp('aadsalb2'    ,aadsalb2,NHOR,NLIGHTS)    
       call mpputgp('aadtsoil'    ,aadtsoil,NHOR,1)    
       call mpputgp('aadtd2'      ,aadtd2  ,NHOR,1)      
       call mpputgp('aadtd3'      ,aadtd3  ,NHOR,1)      
@@ -1017,9 +1024,9 @@ plasimversion = "https://github.com/Edilbert/PLASIM/ : 15-Dec-2015"
 
       call mpgetgp('dls'    ,dls    ,NHOR,   1)
       call mpgetgp('drhs'   ,drhs   ,NHOR,   1)
-      call mpgetgp('dalb'   ,dalb   ,NHOR,   1)
-      call mpgetgp('dsalb1' ,dsalb(1,:),NHOR,1)
-      call mpgetgp('dsalb2' ,dsalb(2,:),NHOR,1)
+      call mpgetgp('dalb'   ,dalb   ,NHOR,NLIGHTS)
+      call mpgetgp('dsalb1' ,dsalb1 ,NHOR,NLIGHTS)
+      call mpgetgp('dsalb2' ,dsalb2 ,NHOR,NLIGHTS)
       call mpgetgp('dz0'    ,dz0    ,NHOR,   1)
       call mpgetgp('dicec'  ,dicec  ,NHOR,   1)
       call mpgetgp('diced'  ,diced  ,NHOR,   1)
@@ -1087,9 +1094,9 @@ plasimversion = "https://github.com/Edilbert/PLASIM/ : 15-Dec-2015"
       call mpgetgp('aadtd5'      ,aadtd5  ,NHOR,1)      
       call mpgetgp('aadls'       ,aadls   ,NHOR,1)       
       call mpgetgp('aadz0'       ,aadz0   ,NHOR,1)       
-      call mpgetgp('aadalb'      ,aadalb  ,NHOR,1)      
-      call mpgetgp('aadsalb1'    ,aadsalb1,NHOR,1)    
-      call mpgetgp('aadsalb2'    ,aadsalb2,NHOR,1)    
+      call mpgetgp('aadalb'      ,aadalb  ,NHOR,NLIGHTS)      
+      call mpgetgp('aadsalb1'    ,aadsalb1,NHOR,NLIGHTS)    
+      call mpgetgp('aadsalb2'    ,aadsalb2,NHOR,NLIGHTS)    
       call mpgetgp('aadtsoil'    ,aadtsoil,NHOR,1)    
       call mpgetgp('aadtd2'      ,aadtd2  ,NHOR,1)      
       call mpgetgp('aadtd3'      ,aadtd3  ,NHOR,1)      
@@ -3476,7 +3483,7 @@ plasimversion = "https://github.com/Edilbert/PLASIM/ : 15-Dec-2015"
       call mpgagp(zfpr1(1,1),dls,1)
       call mpgagp(zfpr2(1,1),dp,1)
       call mpgagp(zfpr3(1,1),drhs,1)
-      call mpgagp(zfpr4(1,1),dalb,1)
+      call mpgagp(zfpr4(1,1),dalb,NLIGHTS)
       call mpgagp(zfpr5(1,1),dt(1,NLEP),1)
       call mpgagp(zfpr6(1,1),dq(1,NLEP),1)
 

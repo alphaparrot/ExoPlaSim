@@ -91,9 +91,9 @@
       call mpbcr(drhsice)
       call mpbci(ncpl_atmos_ice)
       call mpbcr(charnock)
-      call mpbcrn(doceanalb,2)
-      call mpbcrn(dicealbmn,2)
-      call mpbcrn(dicealbmx,2)
+      call mpbcrn(doceanalb,2*NLIGHTS)
+      call mpbcrn(dicealbmn,2*NLIGHTS)
+      call mpbcrn(dicealbmx,2*NLIGHTS)
 !
 !     initialize ice (and ocean)
 !
@@ -143,14 +143,18 @@
        dqs(:)  = dqs(:)/(1.-(1./rdbrv-1.)*dqs(:))
        dq(:,NLEP) = dqs(:)
        drhs(:)=drhssea*(1.-dicec(:))+drhsice*dicec(:)
-       dalb(:)=albsea*(1.-dicec(:))   &
-     &         +dicec(:)*AMIN1(albice,0.5+0.025*(273.-dts(:)))
-       dsalb(1,:)=doceanalb(1)*(1.-dicec(:))   &
-     &         +dicec(:)*AMIN1(dicealbmx(1),dicealbmn(1)+0.025*(273.-dts(:)))
-       dsalb(2,:)=doceanalb(2)*(1.-dicec(:))   &
-     &         +dicec(:)*AMIN1(dicealbmx(2),dicealbmn(2)+0.025*(273.-dts(:)))
        dz0(:)=dz0sea*(1.-dicec(:))+dz0ice*dicec(:)
       endwhere
+      do klight=1,NLIGHTS
+        where(dls(:) < 0.5)
+         dalb(:,klight)=albsea*(1.-dicec(:))   &
+     &           +dicec(:)*AMIN1(albice,0.5+0.025*(273.-dts(:)))
+         dsalb(:,2*klight-1)=doceanalb(2*klight-1)*(1.-dicec(:))   &
+     &           +dicec(:)*AMIN1(dicealbmx(2*klight-1),dicealbmn(2*klight-1)+0.025*(273.-dts(:)))
+         dsalb(:,2*klight  )=doceanalb(2*klight)*(1.-dicec(:))   &
+     &           +dicec(:)*AMIN1(dicealbmx(2*klight),dicealbmn(2*klight)+0.025*(273.-dts(:)))
+        endwhere
+      enddo
       endif
 !
       return
@@ -255,14 +259,18 @@
        zz0(:)=AMAX1(zz0(:),dz0sea)
 !
        drhs(:)=drhssea*(1.-dicec(:))+drhsice*dicec(:)
-       dalb(:)=albsea*(1.-dicec(:))                                     &
-     &           +dicec(:)*AMIN1(albice,0.5+0.025*(273.-dts(:)))
-       dsalb(1,:)=doceanalb(1)*(1.-dicec(:))                                     &
-     &           +dicec(:)*AMIN1(dicealbmx(1),dicealbmn(1)+0.025*(273.-dts(:)))
-       dsalb(2,:)=doceanalb(2)*(1.-dicec(:))                                     &
-     &           +dicec(:)*AMIN1(dicealbmx(2),dicealbmn(2)+0.025*(273.-dts(:)))
        dz0(:)=zz0(:)*(1.-dicec(:))+dz0ice*dicec(:)
       endwhere
+      do klight=1,NLIGHTS
+       where(dls(:) < 0.5)
+          dalb(: ,klight)=albsea*(1.-dicec(:))                                     &
+     &              +dicec(:)*AMIN1(albice,0.5+0.025*(273.-dts(:)))
+          dsalb(:,2*klight-1)=doceanalb(2*klight-1)*(1.-dicec(:))                                     &
+     &              +dicec(:)*AMIN1(dicealbmx(2*klight-1),dicealbmn(2*klight-1)+0.025*(273.-dts(:)))
+          dsalb(:,2*klight  )=doceanalb(2*klight  )*(1.-dicec(:))                                     &
+     &              +dicec(:)*AMIN1(dicealbmx(2*klight  ),dicealbmn(2*klight  )+0.025*(273.-dts(:)))
+       endwhere
+      enddo
 !
       return
       end subroutine seastep

@@ -54,7 +54,7 @@ real            :: znpp                 ! net primary production (kg C /m2 /s)
 real            :: zforest              ! forest cover
 real            :: zlitter              ! litterfall (kg C /m2 /s)
 real            :: znogrow              ! no growth allocation (kg C /m2 /s)
-real            :: zvalb                ! albedo
+real            :: zvalb(NLIGHTS) = 0.12! albedo
 real            :: zvrhs                ! surface conductance
 real            :: zres                 ! heterotrophic respiration (kg C /m2 /s)
 real            :: zveg                 ! vegetation cover (fract.)
@@ -451,7 +451,7 @@ do jhor = 1 , NHOR
 
     dlai(jhor)  = -log(1.0 - zveg)/cveg_k
     zvz0  = dmr(jhor) * zforest+vz0_min*(1.0-zforest)
-    zvalb = valb_min * zveg + valb_max * (1.0 - zveg)
+    zvalb(:) = valb_min * zveg + valb_max * (1.0 - zveg)
     zwmax = vwmax_max * dvsoil(jhor) + vwmax_min * (1.0 - dvsoil(jhor))
     zvrhs = dsc(jhor) * min(1.0,max(0.0,dwatc(jhor)/(zwmax*vws_crit)))
 
@@ -460,11 +460,11 @@ do jhor = 1 , NHOR
     if (dsnow(jhor) > 0.0) then
 
       ! copy PUMA-2 formulation of snow albedo and mix it with forested albedo
-
-      zalbsn = (albsmax - albsmin) * (dt(jhor,NLEP)-263.16) / (TMELT-263.16)
-      zalbsn = max(albsmin,min(albsmax,albsmax-zalbsn))
-      zvalb  = zvalb+(zalbsn-zvalb)*dsnow(jhor)/(dsnow(jhor)+0.01)
-      zvalb  = vsalb_min * zforest + zvalb * (1.-zforest)
+      do klight=1,NLIGHTS
+        zalbsn = (albsmax(klight) - albsmin(klight)) * (dt(jhor,NLEP)-263.16) / (TMELT-263.16)
+        zalbsn = max(albsmin(klight),min(albsmax(klight),albsmax(klight)-zalbsn))
+        zvalb(klight)  = zvalb(klight)+(zalbsn-zvalb(klight))*dsnow(jhor)/(dsnow(jhor)+0.01)
+        zvalb(klight)  = vsalb_min * zforest + zvalb(klight) * (1.-zforest)
       zvrhs  = 1.0
     endif
 
@@ -474,7 +474,7 @@ do jhor = 1 , NHOR
        dz0(jhor)     = sqrt(zvz0*zvz0+dz0climo(jhor)*dz0climo(jhor))
        dwmax(jhor)   = zwmax
        drhs(jhor)    = zvrhs
-       dalb(jhor)    = zvalb
+       dalb(jhor,:)    = zvalb(:)
        dforest(jhor) = zforest
        !!! TODO: CO2 coupling--both local as surface source/sinks and global source/sinks
        ! CO2 flux per dt is area_integral((dresh - dnpp)*dt*mass_conversion)

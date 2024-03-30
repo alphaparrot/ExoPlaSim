@@ -1021,19 +1021,21 @@
        allocate(zalb1(NHOR))
        allocate(zalb2(NHOR))
        zcc(:,:)=dcc(:,:)
-       zalb1(:) = dsalb(2*nlight-1,:)
-       zalb2(:) = dsalb(2*nlight,:)
        dcc(:,:)=0.
        if(nswr==1) then
           !Reset fluxes
           dfu(:,:) = 0.
           dfd(:,:) = 0.
           do k=1,NLIGHTS
+            zalb1(:) = dsalb(:,2*k-1)
+            zalb2(:) = dsalb(:,2*k  )
             !
             !** compute cosine of solar zenit angle for each gridpoint
             !
             if(nsol==1) call solang(k)
             call swr(k)
+            dsalb(:,2*k-1) = zalb1(:)
+            dsalb(:,2*k  ) = zalb2(:)
           enddo
        endif
        dclforc(:,1)=dswfl(:,NLEP)
@@ -1041,8 +1043,6 @@
        dclforc(:,5)=dfu(:,1)
        dclforc(:,6)=dfu(:,NLEP)
        dcc(:,:)=zcc(:,:)
-       dsalb(2*nlight-1,:) = zalb1(:)
-       dsalb(2*nlight,:) = zalb2(:)
        deallocate(zalb1)
        deallocate(zalb2)
       end if
@@ -1334,7 +1334,7 @@
 !     no PUMA variables are used
 !
       if (mypid==NROOT) call put_restart_real('fixedlon',fixedlon)
-      call mpputgp('zsolars',zsolars,2,1)
+      call mpputgp('zsolars',zsolars,2*NLIGHTS,1)
       
 
       if(mypid == NROOT .and. ntime == 1) then
@@ -1977,32 +1977,32 @@
 
 ! Currently: we use the same albedo for both spectral ranges.
 
-       zra1s(:)=dalb(nlight,:)*(1-nstartemp) + dsalb(2*nlight-1,:)*nstartemp
-       zra2s(:)=dalb(nlight,:)*(1-nstartemp) + dsalb(2*nlight  ,:)*nstartemp
+       zra1s(:)=dalb(:,nlight)*(1-nstartemp) + dsalb(:,2*nlight-1)*nstartemp
+       zra2s(:)=dalb(:,nlight)*(1-nstartemp) + dsalb(2*nlight  ,:)*nstartemp
        
 !
 !      set albedo for the direct beam (for ocean use ECHAM3 param unless necham=0)
-       dsalb(2*nlight-1,:)=dls(:)*dsalb(2*nlight-1,:)+(1.-dls(:))*dicec(:)*dsalb(2*nlight-1,:)              &
+       dsalb(:,2*nlight-1)=dls(:)*dsalb(:,2*nlight-1)+(1.-dls(:))*dicec(:)*dsalb(:,2*nlight-1)              &
      &           + (1.-dls(:)) * (1.-dicec(:)) * AMIN1(0.05/(zmu0(:)+0.15),0.15)*necham*(1-necham6) &
      &           + (1.-dls(:)) * (1.-dicec(:)) * (1-necham)*necham6 &
      &  *(0.026/(zmu0(:)**1.7+0.065)+0.15*(zmu0(:)-1)*(zmu0(:)-0.5)*(zmu0(:)-0.1)+0.0082) &
-     &           + (1.-dls(:)) * (1.-dicec(:)) * (1.-necham)*(1-necham6)*dsalb(2*nlight-1,:)
-       dsalb(2*nlight,:)=dls(:)*dsalb(2*nlight,:)   +   (1.-dls(:)) * dicec(:)*dsalb(2*nlight,:)              &
+     &           + (1.-dls(:)) * (1.-dicec(:)) * (1.-necham)*(1-necham6)*dsalb(:,2*nlight-1)
+       dsalb(:,2*nlight)=dls(:)*dsalb(:,2*nlight)   +   (1.-dls(:)) * dicec(:)*dsalb(:,2*nlight)              &
      &           + (1.-dls(:)) * (1.-dicec(:)) * AMIN1(0.05/(zmu0(:)+0.15),0.15)*necham*(1-necham6) &
      &           + (1.-dls(:)) * (1.-dicec(:)) * (1-necham)*necham6 &
      &  *(0.026/(zmu0(:)**1.7+0.065)+0.15*(zmu0(:)-1)*(zmu0(:)-0.5)*(zmu0(:)-0.1)+0.0082) &
-     &           + (1.-dls(:)) * (1.-dicec(:)) * (1.-necham)*(1-necham6)*dsalb(2*nlight,:)
+     &           + (1.-dls(:)) * (1.-dicec(:)) * (1.-necham)*(1-necham6)*dsalb(:,2*nlight)
        
-       dalb(nlight,:) = (zsolars(2*nlight-1)*dsalb(2*nlight-1,:) + zsolars(2*nlight)*dsalb(2*nlight,:))*nstartemp  &
-     &           + (dls(:)*dalb(nlight,:)      + (1.-dls(:)) * dicec(:)*dalb(nlight,:)              &
+       dalb(:,nlight) = (zsolars(2*nlight-1)*dsalb(:,2*nlight-1) + zsolars(2*nlight)*dsalb(:,2*nlight))*nstartemp  &
+     &           + (dls(:)*dalb(:,nlight)      + (1.-dls(:)) * dicec(:)*dalb(:,nlight)              &
      &           + (1.-dls(:)) * (1.-dicec(:)) * AMIN1(0.05/(zmu0(:)+0.15),0.15)*necham*(1-necham6) &
      &           + (1.-dls(:)) * (1.-dicec(:)) * (1-necham)*necham6 &
      &  *(0.026/(zmu0(:)**1.7+0.065)+0.15*(zmu0(:)-1)*(zmu0(:)-0.5)*(zmu0(:)-0.1)+0.0082) &
-     &           + (1.-dls(:)) * (1.-dicec(:)) * (1.-necham)*(1-necham6)*dalb(nlight,:))*(1-nstartemp)
+     &           + (1.-dls(:)) * (1.-dicec(:)) * (1.-necham)*(1-necham6)*dalb(:,nlight))*(1-nstartemp)
        
      
-       zra1(:)=dsalb(2*nlight-1,:)*nstartemp + dalb(nlight,:)*(1-nstartemp)
-       zra2(:)=dsalb(2*nlight,:)*nstartemp + dalb(nlight,:)*(1-nstartemp)
+       zra1(:)=dsalb(:,2*nlight-1)*nstartemp + dalb(:,nlight)*(1-nstartemp)
+       zra2(:)=dsalb(:,2*nlight  )*nstartemp + dalb(:,nlight)*(1-nstartemp)
          
 ! Ice-free ocean albedo is min(0.05/(phi+0.15), 0.15)--reflection and scattering is higher at low phi
        

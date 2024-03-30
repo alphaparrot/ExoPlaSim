@@ -21,31 +21,31 @@
       integer :: newsurf  = 0     ! (dtcl,dwcl) 1: update from file, 2:reset 
       integer :: nwatcini = 0     ! (0/1) initialize water content of soil
       integer :: nwetsoil = 0     ! (0/1) Soil albedo responds to water content
-      real    :: alblandnl  = 0.2   ! albedo for land
-      real    :: albland  = 0.22
+      real    :: albland  = 0.22  ! albedo for land
+      real    :: alblandmax = 0.4
+      real    :: alblandmin = 0.069
       
-      real  :: dgroundalbnl(2)  = 0.22
                    ! Non-spectral versions
-      real    :: albsmin  = 0.4   ! min. albedo for snow
-      real    :: albsmax  = 0.8   ! max. albedo for snow
-      real    :: albsminf = 0.3   ! min. albedo for snow (with forest)
-      real    :: albsmaxf = 0.4   ! max. albedo for snow (with forest)
-      real    :: albgmin  = 0.6   ! min. albedo for glaciers
-      real    :: albgmax  = 0.8   ! max. albedo for glaciers
+      real    :: albsmin(NLIGHTS) = 0.4   ! min. albedo for snow
+      real    :: albsmax(NLIGHTS) = 0.8   ! max. albedo for snow
+      real    :: albsminf(NLIGHTS) = 0.3   ! min. albedo for snow (with forest)
+      real    :: albsmaxf(NLIGHTS) = 0.4   ! max. albedo for snow (with forest)
+      real    :: albgmin(NLIGHTS) = 0.6   ! min. albedo for glaciers
+      real    :: albgmax(NLIGHTS) = 0.8   ! max. albedo for glaciers
                    ! lambda < 0.75 microns
-      real    :: albsmin1  = 0.4   ! min. albedo for snow
-      real    :: albsmax1  = 0.8   ! max. albedo for snow
-      real    :: albsminf1 = 0.3   ! min. albedo for snow (with forest)
-      real    :: albsmaxf1 = 0.4   ! max. albedo for snow (with forest)
-      real    :: albgmin1  = 0.6   ! min. albedo for glaciers
-      real    :: albgmax1  = 0.8   ! max. albedo for glaciers
+      real    :: albsmin1(NLIGHTS)  = 0.4   ! min. albedo for snow
+      real    :: albsmax1(NLIGHTS)  = 0.8   ! max. albedo for snow
+      real    :: albsminf1(NLIGHTS) = 0.3   ! min. albedo for snow (with forest)
+      real    :: albsmaxf1(NLIGHTS) = 0.4   ! max. albedo for snow (with forest)
+      real    :: albgmin1(NLIGHTS)  = 0.6   ! min. albedo for glaciers
+      real    :: albgmax1(NLIGHTS)  = 0.8   ! max. albedo for glaciers
                    ! lambda > 0.75 microns
-      real    :: albsmin2  = 0.4   ! min. albedo for snow
-      real    :: albsmax2  = 0.8   ! max. albedo for snow
-      real    :: albsminf2 = 0.3   ! min. albedo for snow (with forest)
-      real    :: albsmaxf2 = 0.4   ! max. albedo for snow (with forest)
-      real    :: albgmin2  = 0.6   ! min. albedo for glaciers
-      real    :: albgmax2  = 0.8   ! max. albedo for glaciers
+      real    :: albsmin2(NLIGHTS)  = 0.4   ! min. albedo for snow
+      real    :: albsmax2(NLIGHTS)  = 0.8   ! max. albedo for snow
+      real    :: albsminf2(NLIGHTS) = 0.3   ! min. albedo for snow (with forest)
+      real    :: albsmaxf2(NLIGHTS) = 0.4   ! max. albedo for snow (with forest)
+      real    :: albgmin2(NLIGHTS)  = 0.6   ! min. albedo for glaciers
+      real    :: albgmax2(NLIGHTS)  = 0.8   ! max. albedo for glaciers
       
       real    :: dz0land  = 2.0   ! roughness length land
       real    :: drhsland = 0.25  ! wetness factor land
@@ -106,16 +106,16 @@
 !
       real :: dtcl(NHOR,0:13)   =  0.0  ! climatological surface temperature
       real :: dwcl(NHOR,0:13)   = -1.0  ! climatological soil wetness
-      real :: dalbcl(NHOR,0:13) =  0.22  ! climatological background albedo
-      real :: dalbcl1(NHOR,0:13) = 0.22  ! climatological background albedo (<.75 um)
-      real :: dalbcl2(NHOR,0:13) = 0.22  ! climatological background albedo (>.75 um)
+      real :: dalbcl(NHOR,0:14*NLIGHTS-1) =  0.22  ! climatological background albedo
+      real :: dalbcl1(NHOR,0:14*NLIGHTS-1) = 0.22  ! climatological background albedo (<.75 um)
+      real :: dalbcl2(NHOR,0:14*NLIGHTS-1) = 0.22  ! climatological background albedo (>.75 um)
       real :: dtclim(NHOR)      =  0.0  ! climatological surface temperature
       real :: dwclim(NHOR)      =  0.0  ! climatological soil wetness
       real :: dz0clim(NHOR)     =  2.0  ! climatological z0  (total)
       real :: dz0climo(NHOR)    =  0.0  ! climatological z0  (from topograhpy only)
-      real :: dalbclim(NHOR)    =  2.0  ! climatological background albedo
-      real :: dalbclim1(NHOR)   =  2.0  ! climatological background albedo (<.75 um)
-      real :: dalbclim2(NHOR)   =  2.0  ! climatological background albedo (>.75 um)
+      real :: dalbclim(NHOR,NLIGHTS)    =  2.0  ! climatological background albedo
+      real :: dalbclim1(NHOR,NLIGHTS)   =  2.0  ! climatological background albedo (<.75 um)
+      real :: dalbclim2(NHOR,NLIGHTS)   =  2.0  ! climatological background albedo (>.75 um)
 !
       end module landmod
 
@@ -211,18 +211,6 @@
       write(nud,landmod_nl)
       close(12)
       
-      albsmax1 = dsnowalbmx(1)
-      albgmax1 = dsnowalbmx(1)
-      albsmax2 = dsnowalbmx(2)
-      albgmax2 = dsnowalbmx(2)
-      albsmaxf1 = 0.5*albsmax1
-      albsmaxf2 = 0.5*albsmax2
-      albsmin1 = dsnowalbmn(1)
-      albsmin2 = dsnowalbmn(2)
-      albgmin1 = dglacalbmn(1)
-      albgmin2 = dglacalbmn(2)
-      albsminf1 = 0.75*albsmaxf1
-      albsminf2 = 0.75*albsmaxf2
       
       endif
 
@@ -234,27 +222,6 @@
       call mpbci(newsurf)
       call mpbci(nwatcini)
       call mpbcr(albland)
-      
-      call mpbcr(albsmin)
-      call mpbcr(albsmax)
-      call mpbcr(albsminf)
-      call mpbcr(albsmaxf)
-      call mpbcr(albgmin)
-      call mpbcr(albgmax)
-      
-      call mpbcr(albsmin1)
-      call mpbcr(albsmax1)
-      call mpbcr(albsminf1)
-      call mpbcr(albsmaxf1)
-      call mpbcr(albgmin1)
-      call mpbcr(albgmax1)
-      
-      call mpbcr(albsmin2)
-      call mpbcr(albsmax2)
-      call mpbcr(albsminf2)
-      call mpbcr(albsmaxf2)
-      call mpbcr(albgmin2)
-      call mpbcr(albgmax2)
       
       call mpbcr(dz0land)
       call mpbcr(drhsland)
@@ -272,11 +239,51 @@
       call mpbcr(rnbiocats)
       call mpbcrn(dsoilz,NLSOIL)
       
-      call mpbcrn(dsnowalbmn,2)
-      call mpbcrn(dsnowalbmx,2)
-      call mpbcrn(dglacalbmn,2)
-      call mpbcrn(dsnowalb,2)
-      call mpbcrn(dgroundalb,2)
+      call mpbcrn(dsnowalbmn,2*NLIGHTS)
+      call mpbcrn(dsnowalbmx,2*NLIGHTS)
+      call mpbcrn(dglacalbmn,2*NLIGHTS)
+      call mpbcrn(dsnowalb,2*NLIGHTS)
+      call mpbcrn(dgroundalb,2*NLIGHTS)
+      
+      if (mypid == NROOT) then
+         do klight=1,NLIGHTs
+            albsmax1(klight) = dsnowalbmx(2*klight-1)
+            albgmax1(klight = dsnowalbmx(2*klight-11)
+            albsmax2(klight) = dsnowalbmx(2*klight)
+            albgmax2(klight) = dsnowalbmx(2*klight)
+            albsmaxf1(klight) = 0.5*albsmax1(klight)
+            albsmaxf2(klight) = 0.5*albsmax2(klight)
+            albsmin1(klight) = dsnowalbmn(2*klight-1)
+            albsmin2(klight) = dsnowalbmn(2*klight)
+            albgmin1(klight) = dglacalbmn(2*klight-1)
+            albgmin2(klight) = dglacalbmn(2*klight)
+            albsminf1(klight) = 0.75*albsmaxf1(klight)
+            albsminf2(klight) = 0.75*albsmaxf2(klight)
+         enddo
+      endif
+      
+      
+      call mpbcrn(albsmin ,NLIGHTS)
+      call mpbcrn(albsmax ,NLIGHTS)
+      call mpbcrn(albsminf,NLIGHTS)
+      call mpbcrn(albsmaxf,NLIGHTS)
+      call mpbcrn(albgmin ,NLIGHTS)
+      call mpbcrn(albgmax ,NLIGHTS)
+      
+      call mpbcrn(albsmin1,NLIGHTS)
+      call mpbcrn(albsmax1,NLIGHTS)
+      call mpbcrn(albsminf1,NLIGHTS)
+      call mpbcrn(albsmaxf1,NLIGHTS)
+      call mpbcrn(albgmin1,NLIGHTS)
+      call mpbcrn(albgmax1,NLIGHTS)
+      
+      call mpbcrn(albsmin2,NLIGHTS)
+      call mpbcrn(albsmax2,NLIGHTS)
+      call mpbcrn(albsminf2,NLIGHTS)
+      call mpbcrn(albsmaxf2,NLIGHTS)
+      call mpbcrn(albgmin2,NLIGHTS)
+      call mpbcrn(albgmax2,NLIGHTS)
+      
       
 
 !     scale taus from years to seconds
@@ -301,9 +308,16 @@
 !
          dz0clim(:)  = dz0land
          dwmax(:)    = wsmax
-         dalbcl(:,:) = albland
-         dalbcl1(:,:) = dgroundalb(1)
-         dalbcl2(:,:) = dgroundalb(2)
+         
+         !Within the last index, we pack months as slower-running than light sources, so when a month's clim data is read,
+         !we read contiguous memory.
+         do jm=0,13
+            do klight=1,NLIGHTS
+               dalbcl(:, jm*NLIGHTS + klight-1) = albland
+               dalbcl1(:,jm*NLIGHTS + klight-1) = dgroundalb(2*klight-1)
+               dalbcl2(:,jm*NLIGHTS + klight-1) = dgroundalb(2*klight)
+            enddo
+        enddo
 !
 !*       read surface parameters
 !
@@ -318,9 +332,9 @@
    
          call mpsurfgp('dtcl',dtcl,NHOR,14)
          call mpsurfgp('dwcl',dwcl,NHOR,14)
-         call mpsurfgp('dalbcl',dalbcl,NHOR,14)
-         call mpsurfgp('dalbcl1',dalbcl1,NHOR,14)
-         call mpsurfgp('dalbcl2',dalbcl2,NHOR,14)
+         call mpsurfgp('dalbcl',dalbcl,NHOR,14*NLIGHTS)
+         call mpsurfgp('dalbcl1',dalbcl1,NHOR,14*NLIGHTS)
+         call mpsurfgp('dalbcl2',dalbcl2,NHOR,14*NLIGHTS)
 
 !        make sure, that dwmax is positive
 
@@ -371,73 +385,84 @@
 !*    set other surface variables
 !
        do jhor=1,NHOR
-        if(dls(jhor) > 0.0) then
-         dtsm(jhor)=dts(jhor)
-         dqs(jhor)=rdbrv*ra1*EXP(ra2*(dts(jhor)-tmelt)/(dts(jhor)-ra4)) &
-     &            /psurf
-         dqs(jhor)=dqs(jhor)/(1.-(1./rdbrv-1.)*dqs(jhor))
-         dsnow(jhor)=dsnowz(jhor)
-         if(dsnow(jhor) > 0.) then
-          zalbmax=dforest(jhor)*albsmaxf+(1.-dforest(jhor))*albsmax
-          zalbmin=dforest(jhor)*albsminf+(1.-dforest(jhor))*albsmin
-          zdalb=(zalbmax-zalbmin)*(dts(jhor)-263.16)/(tmelt-263.16)
-          zalbsnow=MAX(zalbmin,MIN(zalbmax,zalbmax-zdalb))
-          zalbmax1=dforest(jhor)*albsmaxf1+(1.-dforest(jhor))*albsmax1
-          zalbmin1=dforest(jhor)*albsminf1+(1.-dforest(jhor))*albsmin1
-          zdalb1=(zalbmax1-zalbmin1)*(dts(jhor)-263.16)/(tmelt-263.16)
-          zalbsnow1=MAX(zalbmin1,MIN(zalbmax1,zalbmax1-zdalb1))
-          zalbmax2=dforest(jhor)*albsmaxf2+(1.-dforest(jhor))*albsmax2
-          zalbmin2=dforest(jhor)*albsminf2+(1.-dforest(jhor))*albsmin2
-          zdalb2=(zalbmax2-zalbmin2)*(dts(jhor)-263.16)/(tmelt-263.16)
-          zalbsnow2=MAX(zalbmin2,MIN(zalbmax2,zalbmax2-zdalb2))
-          dalb(jhor)=dalbclim(jhor)                                     &
-     &        +(zalbsnow-dalbclim(jhor))*dsnow(jhor)/(dsnow(jhor)+0.01)
-          dsalb(1,jhor) = dalbclim1(jhor)                               &
-     &        +(zalbsnow1-dalbclim1(jhor))*dsnow(jhor)/(dsnow(jhor)+0.01)
-          dsalb(2,jhor) = dalbclim2(jhor)                               &
-     &        +(zalbsnow2-dalbclim2(jhor))*dsnow(jhor)/(dsnow(jhor)+0.01)
-          drhs(jhor)=1.
-         else
-          dalb(jhor)=dalbclim(jhor)
-          dsalb(1,jhor)=dalbclim1(jhor)
-          dsalb(2,jhor)=dalbclim2(jhor)
-          if (dwmax(jhor) > 0.0)                                        &
-          drhs(jhor)=AMIN1(1.,dwatc(jhor)/(drhsfull*dwmax(jhor)))
+         if (dls(jhor) > 0.0) then
+           dtsm(jhor)=dts(jhor)
+           dqs(jhor)=rdbrv*ra1*EXP(ra2*(dts(jhor)-tmelt)/(dts(jhor)-ra4)) &
+     &              /psurf
+           dqs(jhor)=dqs(jhor)/(1.-(1./rdbrv-1.)*dqs(jhor))
+           dsnow(jhor)=dsnowz(jhor)
+           if(dsnow(jhor) > 0.) then
+             drhs(jhor) = 1.
+           else
+            if (dwmax(jhor) > 0.0)                                        &
+               drhs(jhor)=AMIN1(1.,dwatc(jhor)/(drhsfull*dwmax(jhor)))
+           endif
+           
+           dz0(jhor)=dz0clim(jhor)
+!          
+!          diagnostics: soil temps.
+!          
+           dtsoil(jhor)=dsoilt(jhor,1)
+           if(NLSOIL > 2) dtd2(jhor)=dsoilt(jhor,2)
+           if(NLSOIL > 3) dtd3(jhor)=dsoilt(jhor,3)
+           if(NLSOIL > 4) dtd4(jhor)=dsoilt(jhor,4)
+           dtd5(jhor)=dsoilt(jhor,NLSOIL)
+
+           
+           if (dglac(jhor) > 0.5) then
+             dsnowz(jhor)=AMAX1(dsmax,0.)
+             dsnow(jhor)=dsnowz(jhor)
+             drhs(jhor) = 1.0
+           endif
+         
+           dt(jhor,NLEP)=dts(jhor)
+           dq(jhor,NLEP)=dqs(jhor)
+
          endif
-         dz0(jhor)=dz0clim(jhor)
-!
-!        diagnostics: soil temps.
-!
-         dtsoil(jhor)=dsoilt(jhor,1)
-         if(NLSOIL > 2) dtd2(jhor)=dsoilt(jhor,2)
-         if(NLSOIL > 3) dtd3(jhor)=dsoilt(jhor,3)
-         if(NLSOIL > 4) dtd4(jhor)=dsoilt(jhor,4)
-         dtd5(jhor)=dsoilt(jhor,NLSOIL)
+       enddo
+       
+       do klight=1,NLIGHTS
+         do jhor=1,NHOR
+          if(dls(jhor) > 0.0) then
+            if (dsnow(jhor) > 0.) then
+            zalbmax=dforest(jhor)*albsmaxf + (1.-dforest(jhor))*albsmax
+            zalbmin=dforest(jhor)*albsminf + (1.-dforest(jhor))*albsmin
+            zdalb=(zalbmax-zalbmin)*(dts(jhor)-263.16)/(tmelt-263.16)
+            zalbsnow=MAX(zalbmin,MIN(zalbmax,zalbmax-zdalb))
+            dalb(jhor,klight)=dalbclim(jhor,klight)                                     &
+     &          +(zalbsnow-dalbclim(jhor,klight))*dsnow(jhor)/(dsnow(jhor)+0.01)
+            !Two-band computation
+            zalbmax1=dforest(jhor)*albsmaxf1(klight) + (1.-dforest(jhor))*albsmax1(klight)
+            zalbmin1=dforest(jhor)*albsminf1(klight) + (1.-dforest(jhor))*albsmin1(klight)
+            zdalb1=(zalbmax1-zalbmin1)*(dts(jhor)-263.16)/(tmelt-263.16)
+            zalbsnow1=MAX(zalbmin1,MIN(zalbmax1,zalbmax1-zdalb1))
+            zalbmax2=dforest(jhor)*albsmaxf2(klight) + (1.-dforest(jhor))*albsmax2(klight)
+            zalbmin2=dforest(jhor)*albsminf2(klight) + (1.-dforest(jhor))*albsmin2(klight)
+            zdalb2=(zalbmax2-zalbmin2)*(dts(jhor)-263.16)/(tmelt-263.16)
+            zalbsnow2=MAX(zalbmin2,MIN(zalbmax2,zalbmax2-zdalb2))
+            dsalb(jhor,2*klight-1) = dalbclim1(jhor,klight)                               &
+     &          +(zalbsnow1-dalbclim1(jhor,klight))*dsnow(jhor)/(dsnow(jhor)+0.01)
+            dsalb(jhor,2*klight  ) = dalbclim2(jhor,klight)                               &
+     &          +(zalbsnow2-dalbclim2(jhor,klight))*dsnow(jhor)/(dsnow(jhor)+0.01)
+           else
+            dalb(jhor,klight)=dalbclim(jhor,klight)
+            dsalb(jhor,2*klight-1)=dalbclim1(jhor,klight)
+            dsalb(jhor,2*klight  )=dalbclim2(jhor,klight)
+           endif
+!         
+!*         modifications according to glacier mask
+!         
 
-!
-!*       modifications according to glacier mask
-!
-
-         if(dglac(jhor) > 0.5) then
-          dsnowz(jhor)=AMAX1(dsmax,0.)
-          dsnow(jhor)=dsnowz(jhor)
-          zdalb=(albgmax-albgmin)*(dts(jhor)-263.16)/(tmelt-263.16)
-          zdalb1=(albgmax1-albgmin1)*(dts(jhor)-263.16)/(tmelt-263.16)
-          zdalb2=(albgmax2-albgmin2)*(dts(jhor)-263.16)/(tmelt-263.16)
-          dalb(jhor)=MAX(albgmin,MIN(albgmax,albgmax-zdalb))
-          dsalb(1,jhor)=MAX(albgmin1,MIN(albgmax1,albgmax1-zdalb1))
-          dsalb(2,jhor)=MAX(albgmin2,MIN(albgmax2,albgmax2-zdalb2))
-          drhs(jhor)=1.0
-         end if
-
-!
-!*    set PUMA temperature and moisture:
-!
-
-         dt(jhor,NLEP)=dts(jhor)
-         dq(jhor,NLEP)=dqs(jhor)
-
-        endif
+           if(dglac(jhor) > 0.5) then
+            zdalb=(albgmax-albgmin)*(dts(jhor)-263.16)/(tmelt-263.16)
+            dalb(jhor,klight)=MAX(albgmin,MIN(albgmax,albgmax-zdalb))
+            zdalb1=(albgmax1(klight)-albgmin1(klight))*(dts(jhor)-263.16)/(tmelt-263.16)
+            zdalb2=(albgmax2(klight)-albgmin2(klight))*(dts(jhor)-263.16)/(tmelt-263.16)
+            dsalb(jhor,2*klight-1)=MAX(albgmin1(klight),MIN(albgmax1(klight),albgmax1(klight)-zdalb1))
+            dsalb(jhor,2*klight  )=MAX(albgmin2(klight),MIN(albgmax2(klight),albgmax2(klight)-zdalb2))
+           end if
+          endif
+         enddo
        enddo
 
       else ! restart > 0
@@ -457,9 +482,9 @@
        call mpgetgp('dsoilt'  ,dsoilt  ,NHOR,NLSOIL)
        call mpgetgp('dz0clim' ,dz0clim ,NHOR,     1)
        call mpgetgp('dz0climo',dz0climo,NHOR,     1)
-       call mpgetgp('dalbcl'  ,dalbcl  ,NHOR,    14)
-       call mpgetgp('dalbcl1' ,dalbcl1 ,NHOR,    14)
-       call mpgetgp('dalbcl2' ,dalbcl2 ,NHOR,    14)
+       call mpgetgp('dalbcl'  ,dalbcl  ,NHOR, 14*NLIGHTS)
+       call mpgetgp('dalbcl1' ,dalbcl1 ,NHOR, 14*NLIGHTS)
+       call mpgetgp('dalbcl2' ,dalbcl2 ,NHOR, 14*NLIGHTS)
 
        n_sea_points = ncountsea(dls)
        
@@ -487,9 +512,15 @@
       if (newsurf == 2) then ! preset some fields
          dwmax(:)    = wsmax
          dz0clim(:)  = dz0land
-         dalbcl(:,:) = albland
-         dalbcl1(:,:) = dgroundalb(1)
-         dalbcl2(:,:) = dgroundalb(2)
+         do klight=1,NLIGHTS
+            dalbcl(:,klight) = albland
+         enddo
+         do jm=0,13
+           do klight=1,NLIGHTS
+             dalbcl1(:,jm*NLIGHTS + klight-1) = dgroundalb(2*klight-1)
+             dalbcl2(:,jm*NLIGHTS + klight-1) = dgroundalb(2*klight  )
+           enddo
+         enddo
          dwcl(:,:)   = wsmax * drhsfull * drhsland
       endif
 
@@ -529,58 +560,69 @@
 !     set surface variables
 !
       do jhor=1,NHOR
-       if(dls(jhor) > 0.0) then
-        dtsm(jhor)=dts(jhor)
-        dqs(jhor)=rdbrv*ra1*EXP(ra2*(dts(jhor)-tmelt)/(dts(jhor)-ra4))  &
-     &           /dp(jhor)
-        dqs(jhor)=dqs(jhor)/(1.-(1./rdbrv-1.)*dqs(jhor))
-        dsnow(jhor)=dsnowz(jhor)
-        if(dsnow(jhor) > 0.) then
-         zalbmax=dforest(jhor)*albsmaxf+(1.-dforest(jhor))*albsmax
-         zalbmin=dforest(jhor)*albsminf+(1.-dforest(jhor))*albsmin
-         zdalb=(zalbmax-zalbmin)*(dts(jhor)-263.16)/(tmelt-263.16)
-         zalbsnow=MAX(zalbmin,MIN(zalbmax,zalbmax-zdalb))
-         zalbmax1=dforest(jhor)*albsmaxf1+(1.-dforest(jhor))*albsmax1
-         zalbmin1=dforest(jhor)*albsminf1+(1.-dforest(jhor))*albsmin1
-         zdalb1=(zalbmax1-zalbmin1)*(dts(jhor)-263.16)/(tmelt-263.16)
-         zalbsnow1=MAX(zalbmin1,MIN(zalbmax1,zalbmax1-zdalb1))
-         zalbmax2=dforest(jhor)*albsmaxf2+(1.-dforest(jhor))*albsmax2
-         zalbmin2=dforest(jhor)*albsminf2+(1.-dforest(jhor))*albsmin2
-         zdalb2=(zalbmax2-zalbmin2)*(dts(jhor)-263.16)/(tmelt-263.16)
-         zalbsnow2=MAX(zalbmin2,MIN(zalbmax2,zalbmax2-zdalb2))
-         dalb(jhor)=dalbclim(jhor)                                     &
-     &       +(zalbsnow-dalbclim(jhor))*dsnow(jhor)/(dsnow(jhor)+0.01)
-         dsalb(1,jhor) = dalbclim1(jhor)                               &
-     &       +(zalbsnow1-dalbclim1(jhor))*dsnow(jhor)/(dsnow(jhor)+0.01)
-         dsalb(2,jhor) = dalbclim2(jhor)                               &
-     &       +(zalbsnow2-dalbclim2(jhor))*dsnow(jhor)/(dsnow(jhor)+0.01)
-         drhs(jhor)=1.
-        else
-         dalb(jhor)=dalbclim(jhor)
-         dsalb(1,jhor)=dalbclim1(jhor)
-         dsalb(2,jhor)=dalbclim2(jhor)
-         if (dwmax(jhor) > 0.0)                                        &
-         drhs(jhor)=AMIN1(1., dwatc(jhor)/(drhsfull *dwmax(jhor)))
+        if (dls(jhor) > 0.0) then
+          dtsm(jhor)=dts(jhor)
+          dqs(jhor)=rdbrv*ra1*EXP(ra2*(dts(jhor)-tmelt)/(dts(jhor)-ra4))  &
+     &             /dp(jhor)
+          dqs(jhor)=dqs(jhor)/(1.-(1./rdbrv-1.)*dqs(jhor))
+          dsnow(jhor)=dsnowz(jhor)
+          if (dsnow(jhor) > 0.) then
+            drhs(jhor)=1.
+          else
+            if (dwmax(jhor) > 0.0)                                        &
+                drhs(jhor)=AMIN1(1., dwatc(jhor)/(drhsfull *dwmax(jhor)))
+          endif
+        
+!       
+!       diagnostics: soil temps.
+!       
+        
+          dtsoil(jhor)=dsoilt(jhor,1)
+          if(NLSOIL > 2) dtd2(jhor)=dsoilt(jhor,2)
+          if(NLSOIL > 3) dtd3(jhor)=dsoilt(jhor,3)
+          if(NLSOIL > 4) dtd4(jhor)=dsoilt(jhor,4)
+          dtd5(jhor)=dsoilt(jhor,NLSOIL)
+        
+!       
+!*      set PUMA temperature and moisture:
+!       
+        
+          dt(jhor,NLEP)=dts(jhor)
+          dq(jhor,NLEP)=dqs(jhor)
         endif
+      enddo
 
-!
-!     diagnostics: soil temps.
-!
-
-        dtsoil(jhor)=dsoilt(jhor,1)
-        if(NLSOIL > 2) dtd2(jhor)=dsoilt(jhor,2)
-        if(NLSOIL > 3) dtd3(jhor)=dsoilt(jhor,3)
-        if(NLSOIL > 4) dtd4(jhor)=dsoilt(jhor,4)
-        dtd5(jhor)=dsoilt(jhor,NLSOIL)
-
-!
-!*    set PUMA temperature and moisture:
-!
-
-        dt(jhor,NLEP)=dts(jhor)
-        dq(jhor,NLEP)=dqs(jhor)
-
-       end if
+      do klight=1,NLIGHTS
+        do jhor=1,NHOR
+         if(dls(jhor) > 0.0) then
+          if(dsnow(jhor) > 0.) then
+           zalbmax=dforest(jhor)*albsmaxf+(1.-dforest(jhor))*albsmax
+           zalbmin=dforest(jhor)*albsminf+(1.-dforest(jhor))*albsmin
+           zdalb=(zalbmax-zalbmin)*(dts(jhor)-263.16)/(tmelt-263.16)
+           zalbsnow=MAX(zalbmin,MIN(zalbmax,zalbmax-zdalb))
+           dalb(jhor,klight)=dalbclim(jhor,klight)                                     &
+     &            +(zalbsnow-dalbclim(jhor,klight))*dsnow(jhor)/(dsnow(jhor)+0.01)
+           zalbmax1=dforest(jhor)*albsmaxf1(klight) + (1.-dforest(jhor))*albsmax1(klight)
+           zalbmin1=dforest(jhor)*albsminf1(klight) + (1.-dforest(jhor))*albsmin1(klight)
+           zdalb1=(zalbmax1-zalbmin1)*(dts(jhor)-263.16)/(tmelt-263.16)
+           zalbsnow1=MAX(zalbmin1,MIN(zalbmax1,zalbmax1-zdalb1))
+           zalbmax2=dforest(jhor)*albsmaxf2(klight) + (1.-dforest(jhor))*albsmax2(klight)
+           zalbmin2=dforest(jhor)*albsminf2(klight) + (1.-dforest(jhor))*albsmin2(klight)
+           zdalb2=(zalbmax2-zalbmin2)*(dts(jhor)-263.16)/(tmelt-263.16)
+           zalbsnow2=MAX(zalbmin2,MIN(zalbmax2,zalbmax2-zdalb2))
+           dsalb(jhor,2*klight-1) = dalbclim1(jhor,klight)                               &
+     &         +(zalbsnow1-dalbclim1(jhor,klight))*dsnow(jhor)/(dsnow(jhor)+0.01)
+           dsalb(jhor,  2*klight) = dalbclim2(jhor,klight)                               &
+     &         +(zalbsnow2-dalbclim2(jhor,klight))*dsnow(jhor)/(dsnow(jhor)+0.01)
+        
+          else
+           dalb(jhor,     klight)=dalbclim(jhor, klight)
+           dsalb(jhor,2*klight-1)=dalbclim1(jhor,klight)
+           dsalb(jhor,2*klight)=dalbclim2(jhor,klight)
+          endif
+        
+         end if
+        enddo
       enddo
 
 !
@@ -594,12 +636,14 @@
 !
 
       where(dglac(:) > 0.5 .and. dls(:) > 0.0)
-       dalb(:)=MAX(albgmin,MIN(albgmax                                  &
-     &  ,albgmax-(albgmax-albgmin)*(dts(:)-263.16)/(tmelt-263.16)))
-       dsalb(1,:)=MAX(albgmin1,MIN(albgmax1                                  &
-     &  ,albgmax1-(albgmax1-albgmin1)*(dts(:)-263.16)/(tmelt-263.16)))
-       dsalb(2,:)=MAX(albgmin2,MIN(albgmax2                                  &
-     &  ,albgmax2-(albgmax2-albgmin2)*(dts(:)-263.16)/(tmelt-263.16)))
+       do k=1,NLIGHTS
+         dalb(:,klight)=MAX(albgmin,MIN(albgmax                                  &
+     &    ,albgmax-(albgmax-albgmin)*(dts(:)-263.16)/(tmelt-263.16)))
+         dsalb(:,2*klight-1)=MAX(albgmin1(klight), MIN(albgmax1(klight)                                  &
+     &    ,albgmax1(klight)-(albgmax1(klight)-albgmin1(klight))*(dts(:)-263.16)/(tmelt-263.16)))
+         dsalb(:,  2*klight)=MAX(albgmin2(klight), MIN(albgmax2(klight)                                  &
+     &    ,albgmax2(klight)-(albgmax2(klight)-albgmin2(klight))*(dts(:)-263.16)/(tmelt-263.16)))
+       enddo
        drhs(:)=1.0
       end where
 
@@ -632,9 +676,9 @@
       call mpputgp('dsoilt'  ,dsoilt  ,NHOR,NLSOIL)
       call mpputgp('dz0clim' ,dz0clim ,NHOR, 1)
       call mpputgp('dz0climo',dz0climo,NHOR, 1)
-      call mpputgp('dalbcl'  ,dalbcl  ,NHOR,14)
-      call mpputgp('dalbcl1' ,dalbcl1 ,NHOR,14)
-      call mpputgp('dalbcl2' ,dalbcl2 ,NHOR,14)
+      call mpputgp('dalbcl'  ,dalbcl  ,NHOR,14*NLIGHTS)
+      call mpputgp('dalbcl1' ,dalbcl1 ,NHOR,14*NLIGHTS)
+      call mpputgp('dalbcl2' ,dalbcl2 ,NHOR,14*NLIGHTS)
       return
       end subroutine landstop
 
@@ -1505,30 +1549,33 @@
 !
       call momint(nperpetual,nstep+1,jm1,jm2,zgw2)
       zgw1 = 1.0 - zgw2
-      dalbclim(:)=zgw1*dalbcl(:,jm1)+zgw2*dalbcl(:,jm2)
-      dalbclim1(:)=zgw1*dalbcl1(:,jm1)+zgw2*dalbcl1(:,jm2)
-      dalbclim2(:)=zgw1*dalbcl2(:,jm1)+zgw2*dalbcl2(:,jm2)
-      
+      do klight=1,NLIGHTS
+         dalbclim(:, klight)=zgw1*dalbcl(:, jm1*NLIGHTS + klight-1)+zgw2*dalbcl(:, jm2*NLIGHTS + klight-1)
+         dalbclim1(:,klight)=zgw1*dalbcl1(:,jm1*NLIGHTS + klight-1)+zgw2*dalbcl1(:,jm2*NLIGHTS + klight-1)
+         dalbclim2(:,klight)=zgw1*dalbcl2(:,jm1*NLIGHTS + klight-1)+zgw2*dalbcl2(:,jm2*NLIGHTS + klight-1)
+      enddo
 !      
 !     Modify the surface background albedo according to soil water capacity
 !
       if (nwetsoil > 0.5) then
-        do jhor = 1,NHOR
-          if (dls(jhor)>0.5) then
-            if (dts(jhor)>273.15) then !We have wet soil. The wetter, the darker.
-              bf = dwater(jhor)/wsmax
-              al = 1.0/aa*(max(bf,1.0e-3)**((1.0-yy)/yy) - 1)**(1.0/yy)
-              dalbclim(jhor) = alblandmax * exp(-(bf*25)**6)+ &
+        do klight=1,NLIGHTS
+           do jhor = 1,NHOR
+             if (dls(jhor)>0.5) then
+               if (dts(jhor)>273.15) then !We have wet soil. The wetter, the darker.
+                 bf = dwater(jhor)/wsmax
+                 al = 1.0/aa*(max(bf,1.0e-3)**((1.0-yy)/yy) - 1)**(1.0/yy)
+                    dalbclim(jhor,klight) = alblandmax * exp(-(bf*25)**6)+ &
 &                              al * (1 - exp(-(bf*25)**6) - exp(-((1-bf)*30)**9))+ &
 &                              alblandmin * exp(-((1-bf)*30)**9)
-              dalbclim1(jhor) = dalbclim(jhor)
-              dalbclim2(jhor) = dalbclim(jhor)
-            else !Frozen soil.
-              dalbclim(jhor) = albland
-              dalbclim1(jhor) = dgroundalb(1)
-              dalbclim2(jhor) = dgroundalb(2)
-            endif
-          endif
+                 dalbclim1(jhor,klight) = dalbclim(jhor,klight)
+                 dalbclim2(jhor,klight) = dalbclim(jhor,klight)
+               else !Frozen soil.
+                 dalbclim(jhor,klight) = albland
+                 dalbclim1(jhor,klight) = dgroundalb(2*klight-1)
+                 dalbclim2(jhor,klight) = dgroundalb(2*klight)
+               endif
+             endif
+           enddo
         enddo
       endif
       
