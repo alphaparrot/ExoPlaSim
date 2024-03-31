@@ -517,27 +517,34 @@ def refactorvariable(variable,header,nlev=10,nlights=1,ntimes=None):
     dim1 = max(header[4],header[5])
     dim2 = min(header[4],header[5])
     if header[1]==1:
-        nlevs=nlev
-        nlight=1
-        if len(variable)%(float(len(variable))/(dim1*dim2*nlevs))!=0:
-            nlevs+=1
-    else:
-        nlevs=1
-        if header[1]==-1:
+        if len(variable)%(float(len(variable))/(dim1*dim2*nlights*nlev))==0:
+            nlevs=nlev
+            nlight=nlights
+        elif len(variable)%(float(len(variable))/(dim1*dim2*nlights))==0:
+            nlevs=1
             nlight=nlights
         else:
+            nlevs=nlev
             nlight=1
+            if len(variable)%(float(len(variable))/(dim1*dim2*nlevs))!=0:
+                nlevs+=1
+    else:
+        nlevs=1
+        nlight=1
     if ntimes is None:
         ntimes = int(len(variable)//(dim1*dim2*nlevs*nlight))
     else:
         if len(variable)==ntimes:
             dim1 = 1
             dim2 = 1
+            nlevs = 1
         elif len(variable)==nlights*ntimes:
             dim1 = 1
             dim2 = 1
             nlevs = 1
             nlight = nlights
+        else:
+            ntimes = int(len(variable)//(dim1*dim2*nlevs*nlight))
     if nlevs==1:
         if dim2==1:
             if dim1==1:
@@ -1072,11 +1079,11 @@ def _transformvectorvar(lon,uvar,vvar,umeta,vmeta,lats,nlon,nlev,nlights,ntru,nt
                 ntimes = uvar.shape[0]
                 spuvar = np.asfortranarray(
                             np.transpose(np.reshape(uvar,
-                                                    (ntimes,variable.shape[1])))
+                                                    (ntimes,uvar.shape[1])))
                            )
                 spvvar = np.asfortranarray(
                             np.transpose(np.reshape(vvar,
-                                                    (ntimes,variable.shape[1])))
+                                                    (ntimes,vvar.shape[1])))
                            )
                 gridshape = (ntimes,nlat,nlon)
                 dims = ["time","lat","lon"]
