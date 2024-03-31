@@ -326,7 +326,7 @@ class Model(object):
             self.nsp=170
             self.nlats=256
         else:
-            raise ValueError("Resolution unsupported. ExoPlaSim supports T21, T42, T63, T85, "+
+            raise ValueError(f"Resolution {resolution} unsupported. ExoPlaSim supports T21, T42, T63, T85, "+
                             "T106, T127, and T170 (32, 64, 96, 128, 160, 192, and 256 "+
                             "latitudes respectively")
         
@@ -355,10 +355,11 @@ class Model(object):
             if force991:
                 extraflags+= "-f "
             os.system("cwd=$(pwd) && "+
-                    "cd %s && ./compile.sh -n %d -p %d -r T%d -v %d -s %d "%(sourcedir,self.ncpus,
+                    "cd %s && ./compile.sh -n %d -p %d -r T%d -v %d -s %d -l %d "%(sourcedir,self.ncpus,
                                                                         precision,self.nsp,
                                                                         self.layers,
-                                                                        self.nlights)+
+                                                                        self.nlights,
+                                                                        self.runsteps)+
                     extraflags+" &&"+
                     "cd $cwd")
         
@@ -2397,8 +2398,8 @@ References
             self._edit_namelist("planet_namelist","NFIXORB","1")
             self.fixedorbit=True
             
-        if self.nbody:
-            self._edit_namelist("radmod_namelist","NSOURCES",str(self.nlights))
+        #if self.nbody:
+            #self._edit_namelist("radmod_namelist","NSOURCES",str(self.nlights))
             
         if sourcefile is not None and os.path.isfile(sourcefile):
             os.system("cp %s %s/sources.dat"%(sourcefile,self.workdir))
@@ -3092,7 +3093,7 @@ References
                 self._edit_namelist("radmod_namelist","NBODY",str(self.nbody*1))
                 self.fixedorbit=True
                 self._edit_namelist("planet_namelist","NFIXORB",str(self.fixedorbit*1))
-                self._edit_namelist("radmod_namelist","NSOURCES",str(self.nlights))
+                #self._edit_namelist("radmod_namelist","NSOURCES",str(self.nlights))
             
             if key=="sourcefile":
                 self.sourcefile=value
@@ -4000,8 +4001,10 @@ class System(Model):
     """Initialize a planetary system that can interface with external codes that provide positions and luminosities.
     
     All positions in AU and all stellar parameters in solar units."""
-    def __init__(self,**kwargs):
+    def __init__(self,nlights=1,**kwargs):
         self.init_kwargs = kwargs
+        self.init_kwargs["nlights"] = nlights
+        self.nlights=nlights
         self.sources = {}
         for n in range(self.nlights):
             self.sources[n] = {"xyz":np.array([]),"RA":np.array([]),"DEC":np.array([]),
@@ -4424,7 +4427,7 @@ class System(Model):
                 
         #Compile ExoPlaSim and write sources.dat
         self.init_kwargs["nsteps"] = self.pxyz.shape[0]
-        super(System,self).__init__(self.init_kwargs)
+        super(System,self).__init__(**self.init_kwargs)
         inputtext = []
         for n in range(len(self.sources[0]["RA"])):
             inputtext.append([])

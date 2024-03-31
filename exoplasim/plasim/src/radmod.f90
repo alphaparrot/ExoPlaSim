@@ -119,7 +119,7 @@
                        ! vernal equinox (radians)
       real :: mvelpp   ! Earth's moving vernal equinox longitude
                        ! of perihelion plus pi (radians)
-      real :: eccf=0.  ! Earth-sun distance factor ( i.e. (1/r)**2 )
+      real :: eccf=1.  ! Earth-sun distance factor ( i.e. (1/r)**2 )
       real :: orbnu=0. ! Earth true anomaly in radians.
       real :: lambm=0. ! Solar ecliptic longitude in radians
       real :: rasc(NLIGHTS,NSTEPS)  ! Solar right ascension in radians
