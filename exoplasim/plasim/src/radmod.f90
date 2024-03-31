@@ -30,7 +30,7 @@
       character(len=80) :: starfilehr = " " !Name of hi-res version of input spectrum
       
       real    :: gsol0   = 1367.0 ! solar constant (set in planet module)
-      real    :: gsols(NSTEPS,NLIGHTS) ! solar constants for each light source at each timestep
+      real    :: gsols(NLIGHTS,NSTEPS) ! solar constants for each light source at each timestep
       real    :: solclat = 1.0    ! cos of lat of insolation if ncstsol=1
       real    :: solcdec = 1.0    ! cos of dec of insolation if ncstsol=1
       real    :: clgray  = -1.0   ! cloud grayness (-1 = computed)
@@ -64,7 +64,7 @@
                                   !  0 = daily mean insolation)
       integer :: ncstsol = 0      ! switch to set constant insolation
                                   ! on the whole planet (0/1)=(off/on)
-      integer :: nbody   = 0      ! switch to use N-body input ephemerides for light sources
+!       integer :: nbody   = 0      ! switch to use N-body input ephemerides for light sources
       integer :: iyrbp   = -50    ! Year before present (1950 AD)
                                   ! default = 2000 AD
                                   
@@ -122,9 +122,9 @@
       real :: eccf=0.  ! Earth-sun distance factor ( i.e. (1/r)**2 )
       real :: orbnu=0. ! Earth true anomaly in radians.
       real :: lambm=0. ! Solar ecliptic longitude in radians
-      real :: rasc(NSTEPS,NLIGHTS)  ! Solar right ascension in radians
+      real :: rasc(NLIGHTS,NSTEPS)  ! Solar right ascension in radians
       real :: zcdayf=0. ! Fractional day
-      real :: zdeclf(NSTEPS,NLIGHTS) !Declination angle
+      real :: zdeclf(NLIGHTS,NSTEPS) !Declination angle
       integer :: iyrad ! Year AD to calculate orbit for
       logical, parameter :: log_print = .true.
                        ! Flag to print-out status information or not.
@@ -238,11 +238,12 @@
            ! Scan through high-res wavelengths and re-sample to bb3 wavelengths
            call readdat(starfile,2,965,kdata2)
            bb3(:) = kdata2(:,2)
+        endif
               
         do klight=1,NLIGHTS
         
                
-           if (not lstarfile)   ! Use blackbody spectrum
+           if (.not. lstarfile) then   ! Use blackbody spectrum
               !snowalbedos(:) = 0.25*(fsnowalb(:)+2.0*msnowalb(:)+csnowalb(:)) !assume mostly med-grain
               
 !               const1 = 2*planckh*(cc**2)
@@ -500,7 +501,7 @@
            dglacalbmn(2*klight-1) = a1
            dglacalbmn(2*klight  ) = a2
            
-           write(nud,*) "Minimum glacier albedo below 0.75 microns:",dglacalbmn(2*klight-11)
+           write(nud,*) "Minimum glacier albedo below 0.75 microns:",dglacalbmn(2*klight-1)
            write(nud,*) "Minimum glacier albedo above 0.75 microns:",dglacalbmn(2*klight)
            write(nud,*) "Overall minimum glacier albedo:",z1*dglacalbmn(2*klight-1)+z2*dglacalbmn(2*klight)
            
@@ -571,9 +572,9 @@
          call mpbcrn(zrasc,  NLIGHTS*NSTEPS)
          
          do j=1,NSTEPS
-            gsols( j,:) = zgsols( (j-1)*NLIGHTS+1 : j*NLIGHTS)
-            zdeclf(j,:) = zzdeclf((j-1)*NLIGHTS+1 : j*NLIGHTS)
-            rasc(  j,:) = zrasc(  (j-1)*NLIGHTS+1 : j*NLIGHTS)
+            gsols(:, j) = zgsols( (j-1)*NLIGHTS+1 : j*NLIGHTS)
+            zdeclf(:,j) = zzdeclf((j-1)*NLIGHTS+1 : j*NLIGHTS)
+            rasc(:,  j) = zrasc(  (j-1)*NLIGHTS+1 : j*NLIGHTS)
          enddo
       endif
       
@@ -1399,9 +1400,15 @@
 !
 !**   2) compute declination [radians]
 !
+      if (NSTEPS>1) then
+        kstep = nstep
+      else
+        kstep = 1
+      endif
+          
       if (nbody == 1) then
-          zdecl = zdeclf(nstep,nlight)
-          zrasc = rasc(nstep,nlight)
+          zdecl = zdeclf(nlight,kstep)
+          zrasc = rasc(nlight,kstep)
       else if (ngenkeplerian == 0) then
           call orb_decl(zcday, eccen, mvelpp, lambm0, obliqr, orbnu, lambm, zrasc, zdecl, eccf)
       else
@@ -1409,7 +1416,8 @@
           call gen_orb_decl(zcday, eccen, obliqr, mvelpp, orbnu, lambm, zrasc, zdecl, eccf)
       endif
       zcdayf = zcday
-      zdeclf = zdecl
+      zdeclf(nlight,kstep) = zdecl
+      rasc(nlight,kstep) = zrasc
 !
 !**   3) compute zenith angle
 !
@@ -1433,7 +1441,7 @@
         do jlon = 0 , NLON-1
          jhor = jhor + 1
          zhangle = zmins * zrtim + jlon * zrlon - PI
-         if (ngenkeplerian==1 or nbody==1) zhangle = zhangle - zrasc
+         if ((ngenkeplerian==1) .or. (nbody==1)) zhangle = zhangle - zrasc
          if (zhangle < -PI) zhangle = zhangle + TWOPI
          if (zhangle > PI) zhangle = zhangle - TWOPI
          
@@ -1577,7 +1585,7 @@
 !     dsigma(NLEV)     : delta sigma (half level)  (used)
 !     dp(NHOR)         : surface pressure (Pa) (used)
 !     dalb(NHOR)       : surface albedo (used)
-!     dsalb(2,NHOR)    : band-specific surface albedo (used)
+!     dsalb(NHOR,2*NLIGHTS)    : band-specific surface albedo (used)
 !     dq(NHOR,NLEP)    : specific humidity (kg/kg) (used)
 !     dql(NHOR,NLEP)   : cloud liquid water content (kg/kg) (used)
 !     dcc(NHOR,NLEP)   : cloud cover (frac.) (used)
@@ -1682,7 +1690,7 @@
 !     top solar radiation downward
 !
       if (nbody>0.5) then
-         gsolfac = gsols(nstep,nlight)
+         gsolfac = gsols(nlight,nstep)
       else
          gsolfac = gsol0 * gdist2
       endif
@@ -1978,7 +1986,7 @@
 ! Currently: we use the same albedo for both spectral ranges.
 
        zra1s(:)=dalb(:,nlight)*(1-nstartemp) + dsalb(:,2*nlight-1)*nstartemp
-       zra2s(:)=dalb(:,nlight)*(1-nstartemp) + dsalb(2*nlight  ,:)*nstartemp
+       zra2s(:)=dalb(:,nlight)*(1-nstartemp) + dsalb(:,2*nlight  )*nstartemp
        
 !
 !      set albedo for the direct beam (for ocean use ECHAM3 param unless necham=0)

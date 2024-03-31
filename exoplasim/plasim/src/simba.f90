@@ -110,6 +110,7 @@ real :: zalbsn =   0.           ! snow albedo
 !     * output of cumulative fluxes
 
 integer :: ibiomass
+integer :: klight
 real    :: zlaim                 ! maximum lai
 real    :: zvegm                 ! maximum veg cover
 real    :: zft
@@ -465,6 +466,7 @@ do jhor = 1 , NHOR
         zalbsn = max(albsmin(klight),min(albsmax(klight),albsmax(klight)-zalbsn))
         zvalb(klight)  = zvalb(klight)+(zalbsn-zvalb(klight))*dsnow(jhor)/(dsnow(jhor)+0.01)
         zvalb(klight)  = vsalb_min * zforest + zvalb(klight) * (1.-zforest)
+      enddo
       zvrhs  = 1.0
     endif
 

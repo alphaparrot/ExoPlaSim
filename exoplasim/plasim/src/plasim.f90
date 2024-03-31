@@ -459,23 +459,23 @@ plasimversion = "https://github.com/Edilbert/PLASIM/ : 15-Dec-2015"
          do k=1,NLIGHTS
          write(nud,*) "**********SOURCE ",k,"**************"
          write(nud,*) "-----For lambda < 0.75 microns------ "
-         write(nud,*) "Ground:",dgroundalb(2*klight-1)
-         write(nud,*) "Ocean<;",doceanalb(2*klight-1) 
-         write(nud,*) "Snow:",dsnowalb(2*klight-1)
-         write(nud,*) "Snow max:",dsnowalbmx(2*klight-1)
-         write(nud,*) "Snow min:",dsnowalbmn(2*klight-1)
-         write(nud,*) "Sea ice max:",dicealbmx(2*klight-1) 
-         write(nud,*) "Sea ice min:",dicealbmn(2*klight-1) 
-         write(nud,*) "Glacier min:",dglacalbmn(2*klight-1)
+         write(nud,*) "Ground:",dgroundalb(2*k-1)
+         write(nud,*) "Ocean<;",doceanalb(2*k-1) 
+         write(nud,*) "Snow:",dsnowalb(2*k-1)
+         write(nud,*) "Snow max:",dsnowalbmx(2*k-1)
+         write(nud,*) "Snow min:",dsnowalbmn(2*k-1)
+         write(nud,*) "Sea ice max:",dicealbmx(2*k-1) 
+         write(nud,*) "Sea ice min:",dicealbmn(2*k-1) 
+         write(nud,*) "Glacier min:",dglacalbmn(2*k-1)
          write(nud,*) "-----For lambda > 0.75 microns------ "
-         write(nud,*) "Ground:",dgroundalb(2*klight)
-         write(nud,*) "Ocean<<<;",doceanalb(2*klight) 
-         write(nud,*) "Snow:",dsnowalb(2*klight)
-         write(nud,*) "Snow max:",dsnowalbmx(2*klight)
-         write(nud,*) "Snow min:",dsnowalbmn(2*klight)
-         write(nud,*) "Sea ice max:",dicealbmx(2*klight) 
-         write(nud,*) "Sea ice min:",dicealbmn(2*klight) 
-         write(nud,*) "Glacier min:",dglacalbmn(2*klight)
+         write(nud,*) "Ground:",dgroundalb(2*k)
+         write(nud,*) "Ocean<<<;",doceanalb(2*k) 
+         write(nud,*) "Snow:",dsnowalb(2*k)
+         write(nud,*) "Snow max:",dsnowalbmx(2*k)
+         write(nud,*) "Snow min:",dsnowalbmn(2*k)
+         write(nud,*) "Sea ice max:",dicealbmx(2*k) 
+         write(nud,*) "Sea ice min:",dicealbmn(2*k) 
+         write(nud,*) "Glacier min:",dglacalbmn(2*k)
          enddo
       endif      
   
@@ -799,8 +799,8 @@ plasimversion = "https://github.com/Edilbert/PLASIM/ : 15-Dec-2015"
       call mpputgp('drhs'   ,drhs   ,NHOR,1)
       call mpputgp('dalb'   ,dalb   ,NHOR,NLIGHTS)
       do k=1,NLIGHTS
-         dsalb1(:,k) = dsalb(:,2*klight-1)
-         dsalb2(:,k) = dsalb(:,2*klight)
+         dsalb1(:,k) = dsalb(:,2*k-1)
+         dsalb2(:,k) = dsalb(:,2*k  )
       enddo
       call mpputgp('dsalb1',dsalb1 ,NHOR,NLIGHTS)
       call mpputgp('dsalb2',dsalb2 ,NHOR,NLIGHTS)
@@ -2323,17 +2323,25 @@ plasimversion = "https://github.com/Edilbert/PLASIM/ : 15-Dec-2015"
       use pumamod
       use radmod
       character(len=30) title
-
+      
       title = 'Fractional Day'
       call wrorb(zcdayf,title)
       title = 'True Anomaly [deg]'
       call wrorb(orbnu*180./PI,title)
-      title = 'Solar Declination [deg]'
-      call wrorb(zdeclf*180./PI,title)
+      if (NSTEPS>1) then
+        kstep = nstep
+      else
+        kstep = 1
+      endif
+      do k=1,NLIGHTS
+        write(nud,*) 'LIGHT SOURCE ',k
+        title = 'Solar Declination [deg]'
+        call wrorb(zdeclf(k,kstep)*180./PI,title)
+        title = 'Right Ascension'
+        call wrorb(rasc(k,kstep)*180./PI,title)
+      enddo
       title = 'Ecliptic Longitude [deg]'
       call wrorb(lambm*180./PI,title)
-      title = 'Right Ascension'
-      call wrorb(rasc*180./PI,title)
       title = 'Distance Modulus'
       call wrorb(eccf,title)
       scale = 10.0

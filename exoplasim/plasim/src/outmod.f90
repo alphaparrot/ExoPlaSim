@@ -274,6 +274,12 @@
       use radmod
       
       if (nlowio .eq. 0) then
+      
+        if (NSTEPS>1) then
+          kstep = nstep
+        else
+          kstep = 1
+        endif
         
         !True anomaly
         call writescalar(40,orbnu*180./PI,50)
@@ -282,13 +288,17 @@
         call writescalar(40,lambm*180./PI,51)
         
         !Solar declination
-        call writescalar(40,zdeclf*180./PI,52)
+        do k=1,NLIGHTS
+          call writecolumn(40,zdeclf(k,kstep)*180./PI,52,k)
+        enddo
         
         !Solar distance modulus
         call writescalar(40,1.0/sqrt(eccf),53)
         
         !Solar right ascension
-        call writescalar(40,rasc*180./PI,54)
+        do k=1,NLIGHTS
+          call writecolumn(40,rasc(k,kstep)*180./PI,54,k)
+        enddo
         
       else !low IO mode
         !True anomaly
@@ -300,16 +310,20 @@
         call writescalar(40,alambm*180./PI,51)
         
         !Solar declination
-        azdecl = azdecl/real(max(1,naccuout))
-        call writescalar(40,azdecl*180./PI,52)
+        azdecl(:) = azdecl(:)/real(max(1,naccuout))
+        do k=1,NLIGHTS
+           call writecolumn(40,azdecl(k)*180./PI,52,k)
+        enddo
         
         !Solar distance modulus
         ardist = ardist/real(max(1,naccuout))
         call writescalar(40,ardist,53)
         
         !Solar right ascension
-        arasc = arasc/real(max(1,naccuout))
-        call writescalar(40,rasc*180./PI,54)
+        arasc(:) = arasc(:)/real(max(1,naccuout))
+        do k=1,NLIGHTS
+           call writecolumn(40,arasc(k)*180./PI,54,k)
+        enddo
       endif
       
       return
@@ -1729,6 +1743,12 @@
       use pumamod
       use radmod
       
+        if (NSTEPS>1) then
+          kstep = nstep
+        else
+          kstep = 1
+        endif
+      
         !True anomaly
         call writescalar(140,orbnu*180./PI,50)
         
@@ -1736,13 +1756,17 @@
         call writescalar(140,lambm*180./PI,51)
         
         !Solar declination
-        call writescalar(140,zdeclf*180./PI,52)
+        do k=1,NLIGHTS
+          call writecolumn(140,zdeclf(k,kstep)*180./PI,52,k)
+        enddo
         
         !Solar distance modulus
         call writescalar(140,1.0/sqrt(eccf),53)
         
         !Solar right ascension
-        call writescalar(140,rasc*180./PI,54)
+        do k=1,NLIGHTS
+          call writecolumn(140,rasc(k,kstep)*180./PI,54,k)
+        enddo
       
       return
       end
@@ -2155,6 +2179,12 @@
       
       integer, intent(in) :: kunit
       
+        if (NSTEPS>1) then
+          kstep = nstep
+        else
+          kstep = 1
+        endif
+      
         !True anomaly
         call writescalar(kunit,orbnu*180./PI,50)
         
@@ -2162,14 +2192,17 @@
         call writescalar(kunit,lambm*180./PI,51)
         
         !Solar declination
-        call writescalar(kunit,zdeclf*180./PI,52)
+        do k=1,NLIGHTS
+          call writecolumn(kunit,zdeclf(k,kstep)*180./PI,52,k)
+        enddo
         
         !Solar distance modulus
         call writescalar(kunit,1.0/sqrt(eccf),53)
         
         !Solar right ascension
-        call writescalar(kunit,rasc*180./PI,54)
-        
+        do k=1,NLIGHTS
+          call writecolumn(kunit,rasc(k,kstep)*180./PI,54,k)
+        enddo
       
       return
       end
@@ -2561,14 +2594,20 @@
       atsama(:)=AMAX1(atsama(:),dtsa(:))
       aweathering(:)=aweathering(:)+localweathering(:)
       azmuz(:) = azmuz(:)+gmu0(:)
+      
+      if (NSTEPS>1) then
+        kstep = nstep
+      else
+        kstep = 1
+      endif
 
       if (nlowio > 0) then
       
         aorbnu = aorbnu + orbnu
         alambm = alambm + lambm
-        azdecl = azdecl + zdeclf
+        azdecl(:) = azdecl(:) + zdeclf(:,kstep)
         ardist = ardist + 1.0/sqrt(eccf)
-        arasc = arasc + rasc
+        arasc(:) = arasc(:) + rasc(:,kstep)
       
         aaso(:) = aaso(:) + so(:)        
         aasp(:) = aasp(:) + sp(:)

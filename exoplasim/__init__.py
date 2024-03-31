@@ -355,7 +355,7 @@ class Model(object):
             if force991:
                 extraflags+= "-f "
             os.system("cwd=$(pwd) && "+
-                    "cd %s && ./compile.sh -n %d -p %d -r T%d -v %d -s %d"%(sourcedir,self.ncpus,
+                    "cd %s && ./compile.sh -n %d -p %d -r T%d -v %d -s %d "%(sourcedir,self.ncpus,
                                                                         precision,self.nsp,
                                                                         self.layers,
                                                                         self.nlights)+

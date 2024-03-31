@@ -248,7 +248,7 @@
       if (mypid == NROOT) then
          do klight=1,NLIGHTs
             albsmax1(klight) = dsnowalbmx(2*klight-1)
-            albgmax1(klight = dsnowalbmx(2*klight-11)
+            albgmax1(klight) = dsnowalbmx(2*klight-1)
             albsmax2(klight) = dsnowalbmx(2*klight)
             albgmax2(klight) = dsnowalbmx(2*klight)
             albsmaxf1(klight) = 0.5*albsmax1(klight)
@@ -425,8 +425,8 @@
          do jhor=1,NHOR
           if(dls(jhor) > 0.0) then
             if (dsnow(jhor) > 0.) then
-            zalbmax=dforest(jhor)*albsmaxf + (1.-dforest(jhor))*albsmax
-            zalbmin=dforest(jhor)*albsminf + (1.-dforest(jhor))*albsmin
+            zalbmax=dforest(jhor)*albsmaxf(klight) + (1.-dforest(jhor))*albsmax(klight)
+            zalbmin=dforest(jhor)*albsminf(klight) + (1.-dforest(jhor))*albsmin(klight)
             zdalb=(zalbmax-zalbmin)*(dts(jhor)-263.16)/(tmelt-263.16)
             zalbsnow=MAX(zalbmin,MIN(zalbmax,zalbmax-zdalb))
             dalb(jhor,klight)=dalbclim(jhor,klight)                                     &
@@ -454,8 +454,8 @@
 !         
 
            if(dglac(jhor) > 0.5) then
-            zdalb=(albgmax-albgmin)*(dts(jhor)-263.16)/(tmelt-263.16)
-            dalb(jhor,klight)=MAX(albgmin,MIN(albgmax,albgmax-zdalb))
+            zdalb=(albgmax(klight)-albgmin(klight))*(dts(jhor)-263.16)/(tmelt-263.16)
+            dalb(jhor,klight)=MAX(albgmin(klight),MIN(albgmax(klight),albgmax(klight)-zdalb))
             zdalb1=(albgmax1(klight)-albgmin1(klight))*(dts(jhor)-263.16)/(tmelt-263.16)
             zdalb2=(albgmax2(klight)-albgmin2(klight))*(dts(jhor)-263.16)/(tmelt-263.16)
             dsalb(jhor,2*klight-1)=MAX(albgmin1(klight),MIN(albgmax1(klight),albgmax1(klight)-zdalb1))
@@ -596,8 +596,8 @@
         do jhor=1,NHOR
          if(dls(jhor) > 0.0) then
           if(dsnow(jhor) > 0.) then
-           zalbmax=dforest(jhor)*albsmaxf+(1.-dforest(jhor))*albsmax
-           zalbmin=dforest(jhor)*albsminf+(1.-dforest(jhor))*albsmin
+           zalbmax=dforest(jhor)*albsmaxf(klight) + (1.-dforest(jhor))*albsmax(klight)
+           zalbmin=dforest(jhor)*albsminf(klight) + (1.-dforest(jhor))*albsmin(klight)
            zdalb=(zalbmax-zalbmin)*(dts(jhor)-263.16)/(tmelt-263.16)
            zalbsnow=MAX(zalbmin,MIN(zalbmax,zalbmax-zdalb))
            dalb(jhor,klight)=dalbclim(jhor,klight)                                     &
@@ -634,18 +634,20 @@
 !
 !*     modifications according to glacier mask
 !
-
       where(dglac(:) > 0.5 .and. dls(:) > 0.0)
-       do k=1,NLIGHTS
-         dalb(:,klight)=MAX(albgmin,MIN(albgmax                                  &
-     &    ,albgmax-(albgmax-albgmin)*(dts(:)-263.16)/(tmelt-263.16)))
+        drhs(:) = 1.0
+      endwhere
+
+      do klight=1,NLIGHTS
+       where(dglac(:) > 0.5 .and. dls(:) > 0.0)
+         dalb(:,klight)=MAX(albgmin(klight),MIN(albgmax(klight)                                  &
+     &    ,albgmax(klight)-(albgmax(klight)-albgmin(klight))*(dts(:)-263.16)/(tmelt-263.16)))
          dsalb(:,2*klight-1)=MAX(albgmin1(klight), MIN(albgmax1(klight)                                  &
      &    ,albgmax1(klight)-(albgmax1(klight)-albgmin1(klight))*(dts(:)-263.16)/(tmelt-263.16)))
          dsalb(:,  2*klight)=MAX(albgmin2(klight), MIN(albgmax2(klight)                                  &
      &    ,albgmax2(klight)-(albgmax2(klight)-albgmin2(klight))*(dts(:)-263.16)/(tmelt-263.16)))
-       enddo
-       drhs(:)=1.0
-      end where
+       endwhere
+      enddo
 
       return
       end subroutine landstep
