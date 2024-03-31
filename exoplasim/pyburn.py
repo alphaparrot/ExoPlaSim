@@ -493,7 +493,7 @@ def readallvariables(fbuffer):
     return headers, variables
     
 
-def refactorvariable(variable,header,nlev=10,nlights=1):
+def refactorvariable(variable,header,nlev=10,nlights=1,ntimes=None):
     '''Given a 1D data array extracted from a file with :py:func:`readrecord <exoplasim.pyburn.readrecord>`, reshape it into its appropriate dimensions.
     
     Parameters
@@ -527,7 +527,17 @@ def refactorvariable(variable,header,nlev=10,nlights=1):
             nlight=nlights
         else:
             nlight=1
-    ntimes = int(len(variable)//(dim1*dim2*nlevs*nlight))
+    if ntimes is None:
+        ntimes = int(len(variable)//(dim1*dim2*nlevs*nlight))
+    else:
+        if len(variable)==ntimes:
+            dim1 = 1
+            dim2 = 1
+        elif len(variable)==nlights*ntimes:
+            dim1 = 1
+            dim2 = 1
+            nlevs = 1
+            nlight = nlights
     if nlevs==1:
         if dim2==1:
             if dim1==1:
@@ -586,7 +596,7 @@ def readfile(filename):
     data = {}
     
     for key in kcodes:
-        data[key] = refactorvariable(variables[key],headers[key],nlev=nlevs,nlights=nlights)
+        data[key] = refactorvariable(variables[key],headers[key],nlev=nlevs,nlights=nlights,ntimes=len(time))
     
     nlat = min(headers['main'][4],headers['main'][5])
     nlon = max(headers['main'][4],headers['main'][5])
