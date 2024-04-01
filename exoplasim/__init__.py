@@ -4017,9 +4017,10 @@ class System(Model):
     """Initialize a planetary system that can interface with external codes that provide positions and luminosities.
     
     All positions in AU and all stellar parameters in solar units."""
-    def __init__(self,nlights=1,**kwargs):
+    def __init__(self,nlights=1,stepsperyear=11520,**kwargs):
         self.init_kwargs = kwargs
         self.init_kwargs["nlights"] = nlights
+        self.orb_stepsperyear = stepsperyear
         self.nlights=nlights
         self.sources = {}
         for n in range(self.nlights):
@@ -4450,13 +4451,36 @@ class System(Model):
                     self.sources[src]["S"][n] *= 1.0-min(1,eclipsefraction)
                 
         #Compile ExoPlaSim and write sources.dat
-        self.init_kwargs["nsteps"] = self.pxyz.shape[0]
+        self.init_kwargs["nsteps"] = self.orb_stepsperyear #self.pxyz.shape[0]
         super(System,self).__init__(**self.init_kwargs)
+            
+        #return inputtext
+              
+    def writesourcesdat(self,startstep=0):
+        '''Write sources.dat
+        
+        This will write `stepsperyear` steps of orbital integration into `sources.dat`.
+        
+        Parameters
+        ----------
+        startstep : int, optional
+            The starting step to use. 
+            
+        Yields
+        ------
+        `sources.dat`
+            Text file with one header line, 3 columns per light source, and `stepsperyear` rows, 
+            recording RA, DEC, and insolation (in that order) for each light source
+        '''
+        
+        if startstep+self.orb_stepsperyear >= len(self.sources[0]["RA"]):
+            raise Exception("Insufficient orbital steps remaining to complete a whole year!")
+        
         header = ""
         for k in range(1,len(self.sources)+1):
             header += f"RA{k}\tDEC{k}\tS{k}\t"
         inputtext = []
-        for n in range(len(self.sources[0]["RA"])):
+        for n in range(startstep,min(startstep+self.orb_stepsperyear,len(self.sources[0]["RA"]))):
             inputtext.append([])
             for k in range(len(self.sources)):
                 inputtext[-1].append(f"{self.sources[k]['RA'][n]} {self.sources[k]['DEC'][n]} {self.sources[k]['S'][n]}")
@@ -4464,7 +4488,13 @@ class System(Model):
         inputtext = header+"\n"+"\n".join(inputtext)
         with open(f"{self.workdir}/sources.dat","w") as datf:
             datf.write(inputtext)
-            
-        #return inputtext
-                        
         
+    def _run(self,**kwargs):
+        '''Wrapper for `Model` `_run` routine, which will write a new `sources.dat` file each year, stepping forward through
+        the orbital integration by `stepsperyear` steps each time.'''
+        
+        years = kwargs["years"]
+        kwargs.remove("years")
+        for year in range(kwargs["years"]):
+            self.writesourcesdat(startstep = year*self.orb_stepsperyear)
+            super(System,self)._run(years=1,**kwargs)
