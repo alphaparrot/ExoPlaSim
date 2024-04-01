@@ -497,6 +497,7 @@ plasimversion = "https://github.com/Edilbert/PLASIM/ : 15-Dec-2015"
          write(nud,'(" Mean of topographic height          = ",f10.2," [m]")') zmeanoro / ga
          write(nud,'(" Mean of surface pressure            = ",f10.2," [hPa]")') psurf * 0.01
          write(nud,'(" Initial step number : ",i6," ")') nstep
+         
       end if
       call mpbcr(psurf)
 
@@ -2329,16 +2330,18 @@ plasimversion = "https://github.com/Edilbert/PLASIM/ : 15-Dec-2015"
       title = 'True Anomaly [deg]'
       call wrorb(orbnu*180./PI,title)
       if (NSTEPS>1) then
-        kstep = nstep
+        kstep = nhcstp
       else
         kstep = 1
       endif
       do k=1,NLIGHTS
-        write(nud,*) 'LIGHT SOURCE ',k
+        write(nud,*) 'LIGHT SOURCE ',k,'STEP',kstep
         title = 'Solar Declination [deg]'
         call wrorb(zdeclf(k,kstep)*180./PI,title)
         title = 'Right Ascension'
         call wrorb(rasc(k,kstep)*180./PI,title)
+        title = 'Insolation'
+        call wrorb(gsols(k,kstep),title)
       enddo
       title = 'Ecliptic Longitude [deg]'
       call wrorb(lambm*180./PI,title)

@@ -106,9 +106,9 @@
 !
       real :: dtcl(NHOR,0:13)   =  0.0  ! climatological surface temperature
       real :: dwcl(NHOR,0:13)   = -1.0  ! climatological soil wetness
-      real :: dalbcl(NHOR,0:14*NLIGHTS-1) =  0.22  ! climatological background albedo
-      real :: dalbcl1(NHOR,0:14*NLIGHTS-1) = 0.22  ! climatological background albedo (<.75 um)
-      real :: dalbcl2(NHOR,0:14*NLIGHTS-1) = 0.22  ! climatological background albedo (>.75 um)
+      real :: dalbcl(NHOR,0:13) =  0.22  ! climatological background albedo
+      real :: dalbcl1(NHOR,0:13) = 0.22  ! climatological background albedo (<.75 um)
+      real :: dalbcl2(NHOR,0:13) = 0.22  ! climatological background albedo (>.75 um)
       real :: dtclim(NHOR)      =  0.0  ! climatological surface temperature
       real :: dwclim(NHOR)      =  0.0  ! climatological soil wetness
       real :: dz0clim(NHOR)     =  2.0  ! climatological z0  (total)
@@ -312,11 +312,16 @@
          !Within the last index, we pack months as slower-running than light sources, so when a month's clim data is read,
          !we read contiguous memory.
          do jm=0,13
+            dalbcl(:, jm) = albland
+            dalbcl1(:,jm) = 0.
+            dalbcl2(:,jm) = 0.
+            !We'll just use the average
             do klight=1,NLIGHTS
-               dalbcl(:, jm*NLIGHTS + klight-1) = albland
-               dalbcl1(:,jm*NLIGHTS + klight-1) = dgroundalb(2*klight-1)
-               dalbcl2(:,jm*NLIGHTS + klight-1) = dgroundalb(2*klight)
+               dalbcl1(:,jm) = dalbcl1(:,jm) + dgroundalb(2*klight-1)
+               dalbcl2(:,jm) = dalbcl1(:,jm) + dgroundalb(2*klight)
             enddo
+            dalbcl1(:,jm) = dalbcl1(:,jm)/NLIGHTS
+            dalbcl2(:,jm) = dalbcl2(:,jm)/NLIGHTS
         enddo
 !
 !*       read surface parameters
@@ -332,9 +337,9 @@
    
          call mpsurfgp('dtcl',dtcl,NHOR,14)
          call mpsurfgp('dwcl',dwcl,NHOR,14)
-         call mpsurfgp('dalbcl',dalbcl,NHOR,14*NLIGHTS)
-         call mpsurfgp('dalbcl1',dalbcl1,NHOR,14*NLIGHTS)
-         call mpsurfgp('dalbcl2',dalbcl2,NHOR,14*NLIGHTS)
+         call mpsurfgp('dalbcl',dalbcl,NHOR,14)
+         call mpsurfgp('dalbcl1',dalbcl1,NHOR,14)
+         call mpsurfgp('dalbcl2',dalbcl2,NHOR,14)
 
 !        make sure, that dwmax is positive
 
@@ -482,9 +487,9 @@
        call mpgetgp('dsoilt'  ,dsoilt  ,NHOR,NLSOIL)
        call mpgetgp('dz0clim' ,dz0clim ,NHOR,     1)
        call mpgetgp('dz0climo',dz0climo,NHOR,     1)
-       call mpgetgp('dalbcl'  ,dalbcl  ,NHOR, 14*NLIGHTS)
-       call mpgetgp('dalbcl1' ,dalbcl1 ,NHOR, 14*NLIGHTS)
-       call mpgetgp('dalbcl2' ,dalbcl2 ,NHOR, 14*NLIGHTS)
+       call mpgetgp('dalbcl'  ,dalbcl  ,NHOR,    14)
+       call mpgetgp('dalbcl1' ,dalbcl1 ,NHOR,    14)
+       call mpgetgp('dalbcl2' ,dalbcl2 ,NHOR,    14)
 
        n_sea_points = ncountsea(dls)
        
@@ -512,14 +517,14 @@
       if (newsurf == 2) then ! preset some fields
          dwmax(:)    = wsmax
          dz0clim(:)  = dz0land
-         do klight=1,NLIGHTS
-            dalbcl(:,klight) = albland
-         enddo
          do jm=0,13
+           dalbcl(:,jm) = albland
            do klight=1,NLIGHTS
-             dalbcl1(:,jm*NLIGHTS + klight-1) = dgroundalb(2*klight-1)
-             dalbcl2(:,jm*NLIGHTS + klight-1) = dgroundalb(2*klight  )
+             dalbcl1(:,jm) = dalbcl1(:,jm) + dgroundalb(2*klight-1)
+             dalbcl2(:,jm) = dalbcl2(:,jm) + dgroundalb(2*klight  )
            enddo
+           dalbcl1(:,jm) = dalbcl1(:,jm)/NLIGHTS
+           dalbcl2(:,jm) = dalbcl2(:,jm)/NLIGHTS
          enddo
          dwcl(:,:)   = wsmax * drhsfull * drhsland
       endif
@@ -678,9 +683,9 @@
       call mpputgp('dsoilt'  ,dsoilt  ,NHOR,NLSOIL)
       call mpputgp('dz0clim' ,dz0clim ,NHOR, 1)
       call mpputgp('dz0climo',dz0climo,NHOR, 1)
-      call mpputgp('dalbcl'  ,dalbcl  ,NHOR,14*NLIGHTS)
-      call mpputgp('dalbcl1' ,dalbcl1 ,NHOR,14*NLIGHTS)
-      call mpputgp('dalbcl2' ,dalbcl2 ,NHOR,14*NLIGHTS)
+      call mpputgp('dalbcl'  ,dalbcl  ,NHOR,14)
+      call mpputgp('dalbcl1' ,dalbcl1 ,NHOR,14)
+      call mpputgp('dalbcl2' ,dalbcl2 ,NHOR,14)
       return
       end subroutine landstop
 
@@ -1552,9 +1557,9 @@
       call momint(nperpetual,nstep+1,jm1,jm2,zgw2)
       zgw1 = 1.0 - zgw2
       do klight=1,NLIGHTS
-         dalbclim(:, klight)=zgw1*dalbcl(:, jm1*NLIGHTS + klight-1)+zgw2*dalbcl(:, jm2*NLIGHTS + klight-1)
-         dalbclim1(:,klight)=zgw1*dalbcl1(:,jm1*NLIGHTS + klight-1)+zgw2*dalbcl1(:,jm2*NLIGHTS + klight-1)
-         dalbclim2(:,klight)=zgw1*dalbcl2(:,jm1*NLIGHTS + klight-1)+zgw2*dalbcl2(:,jm2*NLIGHTS + klight-1)
+         dalbclim(:, klight)=zgw1*dalbcl(:, jm1)+zgw2*dalbcl(:, jm2)
+         dalbclim1(:,klight)=zgw1*dalbcl1(:,jm1)+zgw2*dalbcl1(:,jm2)
+         dalbclim2(:,klight)=zgw1*dalbcl2(:,jm1)+zgw2*dalbcl2(:,jm2)
       enddo
 !      
 !     Modify the surface background albedo according to soil water capacity

@@ -361,7 +361,7 @@ class Model(object):
                                                                         self.nlights,
                                                                         self.runsteps)+
                     extraflags+" &&"+
-                    "cd $cwd")
+                    " cd $cwd")
         
         os.system("cp %s/* %s/"%(source,self.workdir))
         #if self.burn7:
@@ -1567,11 +1567,12 @@ class Model(object):
             
         orbdistances = self.semimajoraxis
         
+        #Note: imaging for multiple light sources currently unsupported
         if debug:
             atm,wvl,spectra,colors,lon,lat,avgspectra,albedomap,weights,reflmap,sigmamap,intensities = \
                                                               pRT.image(ncd,times,gases_vmr,
                                                               obsv_coords,gascon=self.gascon,
-                                                              gravity=self.gravity,Tstar=self.startemp,
+                                                              gravity=self.gravity,Tstar=self.startemp[0],
                                                               Rstar=self.starradius,orbdistances=orbdistances,
                                                               num_cpus=num_cpus,cloudfunc=cloudfunc,smooth=smooth,
                                                               smoothweight=smoothweight,filldry=filldry,
@@ -1590,7 +1591,7 @@ class Model(object):
         else:
             atm,wvl,spectra,colors,lon,lat,avgspectra = pRT.image(ncd,times,gases_vmr,
                                                               obsv_coords,gascon=self.gascon,
-                                                              gravity=self.gravity,Tstar=self.startemp,
+                                                              gravity=self.gravity,Tstar=self.startemp[0],
                                                               Rstar=self.starradius,orbdistances=orbdistances,
                                                               num_cpus=num_cpus,cloudfunc=cloudfunc,smooth=smooth,
                                                               smoothweight=smoothweight,filldry=filldry,
@@ -2192,9 +2193,13 @@ References
         self.noutput = noutput
         self._edit_namelist("planet_namelist","GSOL0",str(flux))
         self.flux = flux
-        if startemp:
+        if startemp is not None:
+            startemp = np.array([startemp,]).flatten() #Just in case
+            if nbody:
+                with open(self.workdir+"/startemps.dat","w") as starf:
+                    starf.write("STELLAR EFFECTIVE TEMPERATURE [K]\n"+"\n".join(startemp.astype(str)))
             self._edit_namelist("radmod_namelist","NSTARTEMP","1")
-            self._edit_namelist("radmod_namelist","STARBBTEMP",str(startemp))
+            self._edit_namelist("radmod_namelist","STARBBTEMP",str(startemp[0]))
         self.startemp = startemp
         self.starradius = starradius
         if starspec:
@@ -2681,7 +2686,11 @@ References
             cfg = cfgf.read().split("\n")
         noutput=bool(int(cfg[0]))
         flux=float(cfg[1])
-        startemp=_noneparse(cfg[2],float)
+        startemp=_noneparse(cfg[2],str)
+        if startemp!="None":
+            startemp = np.array(startemp.split("&")).astype(float)
+        else:
+            startemp=None
         starspec=_noneparse(cfg[3],str)
         gases = cfg[4].split("&")
         for gas in gases:
@@ -2930,9 +2939,13 @@ References
                 self.flux = value
             if key=="startemp":
                 startemp=value
-                if startemp:
+                if startemp is not None:
+                    startemp = np.array([startemp,]).flatten()
+                    if "nbody" in kwargs.keys() and kwargs["nbody"] is True:
+                        with open(self.workdir+"/startemps.dat","w") as starf:
+                            starf.write("STELLAR EFFECTIVE TEMPERATURE [K]\n"+"\n".join(startemp.astype(str)))
                     self._edit_namelist("radmod_namelist","NSTARTEMP","1")
-                    self._edit_namelist("radmod_namelist","STARBBTEMP",str(startemp))
+                    self._edit_namelist("radmod_namelist","STARBBTEMP",str(startemp[0]))
                 self.startemp = startemp
             if key=="starradius":
                 starradius=value
@@ -3658,7 +3671,10 @@ References
         
         cfg.append(str(self.noutput*1))
         cfg.append(str(self.flux))
-        cfg.append(str(self.startemp))
+        if self.startemp is None:
+            cfg.append("None")
+        else:
+            cfg.append("&".join(self.startemp.astype(str)))
         cfg.append(str(self.starspec))#=_noneparse(cfg[3],str)
         gases = []
         for gas in self.pgases:
@@ -4012,8 +4028,16 @@ class System(Model):
                                     #x,y,z; right ascension, declination, radius,
                                     #luminosity, and insolation at planet
         
-    def configure(self,timestep=30.0,snapshots=720,nbody=True,**kwargs):
-        super(System,self).configure(timestep=timestep,snapshots=snapshots,nbody=nbody)
+    def configure(self,timestep=30.0,snapshots=720,nbody=True,startemp=None,**kwargs):
+        if startemp is None:
+            startemp = np.ones(self.nlights)*5780.0
+        else:
+            startemp = np.array([startemp,]).flatten()
+            if len(startemp)==1 and self.nlights>1:
+                startemp = np.ones(self.nlights)*startemp
+            elif len(startemp)!=self.nlights:
+                raise Exception("Number of stellar temperatures does not match number of light sources and cannot be unambiguously inferred!")
+        super(System,self).configure(timestep=timestep,snapshots=snapshots,nbody=nbody,startemp=startemp,**kwargs)
     
     def _RADEC(self,source):
         sourcevec = (source - self.pxyz).T
@@ -4428,13 +4452,16 @@ class System(Model):
         #Compile ExoPlaSim and write sources.dat
         self.init_kwargs["nsteps"] = self.pxyz.shape[0]
         super(System,self).__init__(**self.init_kwargs)
+        header = ""
+        for k in range(1,len(self.sources)+1):
+            header += f"RA{k}\tDEC{k}\tS{k}\t"
         inputtext = []
         for n in range(len(self.sources[0]["RA"])):
             inputtext.append([])
             for k in range(len(self.sources)):
                 inputtext[-1].append(f"{self.sources[k]['RA'][n]} {self.sources[k]['DEC'][n]} {self.sources[k]['S'][n]}")
             inputtext[-1] = " ".join(inputtext[-1])
-        inputtext = "\n".join(inputtext)
+        inputtext = header+"\n"+"\n".join(inputtext)
         with open(f"{self.workdir}/sources.dat","w") as datf:
             datf.write(inputtext)
             

@@ -572,10 +572,24 @@
          call mpbcrn(zrasc,  NLIGHTS*NSTEPS)
          
          do j=1,NSTEPS
-            gsols(:, j) = zgsols( (j-1)*NLIGHTS+1 : j*NLIGHTS)
-            zdeclf(:,j) = zzdeclf((j-1)*NLIGHTS+1 : j*NLIGHTS)
-            rasc(:,  j) = zrasc(  (j-1)*NLIGHTS+1 : j*NLIGHTS)
+            do k=1,NLIGHTS
+               gsols(k, j) = zgsols( (j-1)*NLIGHTS+k)
+               zdeclf(k,j) = zzdeclf((j-1)*NLIGHTS+k)
+               rasc(k,  j) = zrasc(  (j-1)*NLIGHTS+k)
+            enddo
          enddo
+         
+         if (mypid==NROOT) then
+            do k=1,NLIGHTS
+              write(nud,*) 'LIGHT',k,'EPHEMERIDES'
+              intstep = NSTEPS/100
+              do j=1,100
+                 write(nud,*) j*intstep,gsols(k,j*intstep), zdeclf(k,j*intstep), rasc(k,j*intstep)
+              enddo
+            enddo
+         endif
+         
+!          call mpbcrn(gsols, NLIGHTS*NSTEPS)
       endif
       
       call mpbcrn(zsolars,2*NLIGHTS)
@@ -1401,7 +1415,7 @@
 !**   2) compute declination [radians]
 !
       if (NSTEPS>1) then
-        kstep = nstep
+        kstep = nhcstp
       else
         kstep = 1
       endif
@@ -1690,7 +1704,7 @@
 !     top solar radiation downward
 !
       if (nbody>0.5) then
-         gsolfac = gsols(nlight,nstep)
+         gsolfac = gsols(nlight,nhcstp)
       else
          gsolfac = gsol0 * gdist2
       endif

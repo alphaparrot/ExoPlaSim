@@ -493,7 +493,7 @@ def readallvariables(fbuffer):
     return headers, variables
     
 
-def refactorvariable(variable,header,nlev=10,nlights=1,ntimes=None):
+def refactorvariable(variable,header,nlev=10,nlights=1,ntimes=72):
     '''Given a 1D data array extracted from a file with :py:func:`readrecord <exoplasim.pyburn.readrecord>`, reshape it into its appropriate dimensions.
     
     Parameters
@@ -516,51 +516,108 @@ def refactorvariable(variable,header,nlev=10,nlights=1,ntimes=None):
     '''
     dim1 = max(header[4],header[5])
     dim2 = min(header[4],header[5])
-    if header[1]==1:
-        if len(variable)%(float(len(variable))/(dim1*dim2*nlights*nlev))==0:
-            nlevs=nlev
-            nlight=nlights
-        elif len(variable)%(float(len(variable))/(dim1*dim2*nlights))==0:
-            nlevs=1
-            nlight=nlights
-        else:
-            nlevs=nlev
-            nlight=1
-            if len(variable)%(float(len(variable))/(dim1*dim2*nlevs))!=0:
-                nlevs+=1
-    else:
-        nlevs=1
-        nlight=1
-    if ntimes is None:
-        ntimes = int(len(variable)//(dim1*dim2*nlevs*nlight))
-    else:
-        if len(variable)==ntimes:
-            dim1 = 1
-            dim2 = 1
-            nlevs = 1
-        elif len(variable)==nlights*ntimes:
-            dim1 = 1
-            dim2 = 1
+    if header[1]==1: #there is a level dimension
+        if len(variable) == ntimes*nlev*dim1*dim2:
+            nlevs = nlev
+            nlight = 1
+            if dim2==1:
+                shape = (ntimes,nlevs,dim1)
+            else:
+                shape = (ntimes,nlevs,dim2,dim1)
+        elif len(variable) == ntimes*(nlev+1)*dim1*dim2:
+            nlevs = nlev+1
+            nlight = 1
+            if dim2==1:
+                shape = (ntimes,nlevs,dim1)
+            else:
+                shape = (ntimes,nlevs,dim2,dim1)
+        elif len(variable) == ntimes*nlights*nlev*dim1*dim2:
+            nlevs = nlev
+            nlight = nlights
+            if dim2==1:
+                shape = (ntimes,nlights,nlevs,dim1)
+            else:
+                shape = (ntimes,nlights,nlevs,dim2,dim1)
+        elif len(variable) == ntimes*nlights*(nlev+1)*dim1*dim2:
+            nlevs = nlev+1
+            nlight = nlights
+            if dim2==1:
+                shape = (ntimes,nlights,nlevs,dim1)
+            else:
+                shape = (ntimes,nlights,nlevs,dim2,dim1)
+        elif len(variable) == ntimes*nlights*dim1*dim2:
             nlevs = 1
             nlight = nlights
-        else:
-            ntimes = int(len(variable)//(dim1*dim2*nlevs*nlight))
-    if nlevs==1:
-        if dim2==1:
-            if dim1==1:
-                newvar = np.reshape(variable,(ntimes,))
+            if dim2==1:
+                shape = (ntimes,nlights,dim1)
             else:
-                newvar = np.reshape(variable,(ntimes,dim1))
+                shape = (ntimes,nlights,dim2,dim1)
         else:
-            newvar = np.reshape(variable,(ntimes,dim2,dim1))
+            nlevs = int(len(variable)//(dim1*dim2*ntimes))
+            nlight = 1
+            if dim2==1:
+                shape = (ntimes,nlevs,dim1)
+            else:
+                shape = (ntimes,nlevs,dim2,dim1)
+        #if len(variable)%(float(len(variable))/(dim1*dim2*nlights*nlev))==0:
+            #nlevs=nlev
+            #nlight=nlights
+        #elif len(variable)%(float(len(variable))/(dim1*dim2*nlights))==0:
+            #nlevs=1
+            #nlight=nlights
+        #else:
+            #nlevs=nlev
+            #nlight=1
+            #if len(variable)%(float(len(variable))/(dim1*dim2*nlevs))!=0:
+                #nlevs+=1
     else:
-        if dim2==1:
-            if dim1==1:
-                newvar = np.reshape(variable,(ntimes,nlevs))
+        if len(variable) == dim1*dim2:
+            nlevs = 1
+            nlight = 1
+            ntimes = 1
+            if dim2==1:
+                shape = (dim1,)
             else:
-                newvar = np.reshape(variable,(ntimes,nlevs,dim1))
+                shape = (dim2,dim1)
         else:
-            newvar = np.reshape(variable,(ntimes,max(nlevs,nlight),dim2,dim1))
+            nlevs=1
+            nlight=1
+            if dim2==1:
+                shape = (ntimes,dim1)
+            else:
+                shape = (ntimes,dim2,dim1)
+    if len(variable)==ntimes:
+        dim1 = 1
+        dim2 = 1
+        nlevs = 1
+        shape = (ntimes,)
+    elif len(variable)==nlights*ntimes:
+        dim1 = 1
+        dim2 = 1
+        nlevs = 1
+        nlight = nlights
+        shape = (ntimes,nlights)
+        #else:
+            #ntimes = int(len(variable)//(dim1*dim2*nlevs*nlight))
+            
+    newvar = np.reshape(variable,shape)
+            
+    #if nlevs==1:
+        #if dim2==1:
+            #if dim1==1:
+                #newvar = np.reshape(variable,(ntimes,))
+            #else:
+                #newvar = np.reshape(variable,(ntimes,dim1))
+        #else:
+            #newvar = np.reshape(variable,(ntimes,dim2,dim1))
+    #else:
+        #if dim2==1:
+            #if dim1==1:
+                #newvar = np.reshape(variable,(ntimes,nlevs))
+            #else:
+                #newvar = np.reshape(variable,(ntimes,nlevs,dim1))
+        #else:
+            #newvar = np.reshape(variable,(ntimes,max(nlevs,nlight),dim2,dim1))
             
     return newvar
 

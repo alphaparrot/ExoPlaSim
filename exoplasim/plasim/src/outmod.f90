@@ -276,7 +276,7 @@
       if (nlowio .eq. 0) then
       
         if (NSTEPS>1) then
-          kstep = nstep
+          kstep = nhcstp
         else
           kstep = 1
         endif
@@ -1744,7 +1744,7 @@
       use radmod
       
         if (NSTEPS>1) then
-          kstep = nstep
+          kstep = nhcstp
         else
           kstep = 1
         endif
@@ -2180,7 +2180,7 @@
       integer, intent(in) :: kunit
       
         if (NSTEPS>1) then
-          kstep = nstep
+          kstep = nhcstp
         else
           kstep = 1
         endif
@@ -2596,7 +2596,7 @@
       azmuz(:) = azmuz(:)+gmu0(:)
       
       if (NSTEPS>1) then
-        kstep = nstep
+        kstep = nhcstp
       else
         kstep = 1
       endif
