@@ -336,23 +336,23 @@
       js(k) = j1
       jn(k) = j2
  
-      do 111 j=js0,j1+1,-1
-      do 111 i=1,im
+      outer1: do j=js0,j1+1,-1
+      do i=1,im
       if(abs(crx(i,j,k)) .gt. 1.) then
             js(k) = j
-            go to 112
+            exit outer1
       endif
-111   continue
-112   continue
+      enddo
+      enddo outer1
  
-      do 122 j=jn0,j2-1
-      do 122 i=1,im
+      outer2: do j=jn0,j2-1
+      do i=1,im
       if(abs(crx(i,j,k)) .gt. 1.) then
             jn(k) = j
-            go to 133
+            exit outer2
       endif
-122   continue
-133   continue
+      enddo
+      enddo outer2
 
       enddo  !vertical layer loop
  
@@ -590,14 +590,18 @@
       wk(:,:,1) = q(:,:,k,ic) + 0.5*wk(:,:,1)
  
 ! N-S advective cross term
-      do 66 j=j1,j2
-      do 66 i=1,im
+      do j=j1,j2
+      do i=1,im
       jt = float(j) - v(i,j,k)
-66    wk(i,j,2) = v(i,j,k) * (q(i,jt,k,ic) - q(i,jt+1,k,ic))
+      wk(i,j,2) = v(i,j,k) * (q(i,jt,k,ic) - q(i,jt+1,k,ic))
+      enddo
+      enddo
  
-      do 77 j=j1,j2
-      do 77 i=1,im
-77    wk(i,j,2) = q(i,j,k,ic) + 0.5*wk(i,j,2)
+      do j=j1,j2
+      do i=1,im
+      wk(i,j,2) = q(i,j,k,ic) + 0.5*wk(i,j,2)
+      enddo
+      enddo
 
 !****6***0*********0*********0*********0*********0*********0**********72
 ! compute flux in  E-W direction
@@ -616,19 +620,23 @@
 ! vertical transport operator FZPPM
 ! Note: DQ contains only first order upwind contribution.
 
-      do 88 j=1,JM
-      do 88 i=1,IM
-88    qz(i,j,k) = DQ(i,j,k) / delp(i,j,k)
+      do j=1,JM
+      do i=1,IM
+      qz(i,j,k) = DQ(i,j,k) / delp(i,j,k)
+      enddo
+      enddo
 
       else
 
-      do 99 j=1,JM
-      do 99 i=1,IM
-99    qz(i,j,k) = q(i,j,k,IC)
+      do j=1,JM
+      do i=1,IM
+      qz(i,j,k) = q(i,j,k,IC)
+      enddo
+      enddo
 
       endif
  
-2500  continue     ! k-loop
+      enddo ! k-loop
  
 !****6***0*********0*********0*********0*********0*********0**********72
 ! Compute fluxes in the vertical direction
@@ -647,15 +655,17 @@
 
       DO k=1,NL
 
-      DO 560 j=1,JM
-      DO 560 i=1,IM
-560   qlow(i,j,k) = DQ(i,j,k) / delp2(i,j,k)
+      DO j=1,JM
+      DO i=1,IM
+      qlow(i,j,k) = DQ(i,j,k) / delp2(i,j,k)
+      enddo 
+      enddo 
  
       if(j1.ne.2) then
-      DO 561 i=1,IM
+      DO i=1,IM
       qlow(i,   2,k) = qlow(i, 1,k)
       qlow(i,jm-1,k) = qlow(i,jm,k)
-561   CONTINUE
+      enddo
       endif
 
       enddo
@@ -672,15 +682,15 @@
 !MIC$ do all autoscope
 !MIC$* private(i,j,k,sum1,sum2)
 
-      do 101 k=1,NL
+      do k=1,NL
 
-      do 425 j=j1,j2
-      do 425 i=1,IM
+      do j=j1,j2
+      do i=1,IM
       DQ(i,j,k) = DQ(i,j,k) +  fx(i,j,k) - fx(i+1,j,k)                   &
                             + (fy(i,j,k) - fy(i,j+1,k))*acosp(j)/dlat(j) &
                             +  fz(i,j,k) - fz(i,j,k+1)
-425   continue
- 
+      enddo
+      enddo
 ! poles:
       sum1 = fy(IM,j1  ,k)
       sum2 = fy(IM,J2+1,k)
@@ -698,7 +708,7 @@
       DQ(i,JM,k) = DQ(1,JM,k)
       enddo
 
-101   continue
+      enddo
  
 !****6***0*********0*********0*********0*********0*********0**********72
       if(FILL) call qckxyz(DQ,DG2,IM,JM,NL,j1,j2,cosp,acosp,IC)
@@ -724,7 +734,7 @@
         q(:,:,:,IC) = DQ(:,:,:) / delp2dyn(:,:,:)
       end select
 
-5000  continue !tracer loop
+      enddo !tracer loop
 
       if (debug) then
          write(nud,*) '* Leaving routine tpcore'
@@ -766,7 +776,7 @@
 !MIC$* shared(im,j1,j2,km,CRX,CRY,adx,ady,Qmax,Qmin)
 !MIC$* private(i,j,k,IT,JT,PS1,PS2,PN1,PN2)
 
-      DO 1000 k=1,km
+      DO k=1,km
       do j=j1,j2
       DO i=1,IM
  
@@ -797,9 +807,9 @@
       Qmax(i,JM,k) = PN1
       Qmin(i,JM,k) = PN2
       enddo
-1000  continue
+      enddo
  
-123   continue
+! 123   continue
 ! Flux Limiter
  
 !MIC$ do all autoscope
@@ -807,7 +817,7 @@
 !MIC$* private(wkx,wkn)
 !MIC$* private(i,j,k,ain,aou,bin,bou,cin,cou,btop,bdon)
 
-      DO 2000 k=1,km
+      DO k=1,km
  
       DO j=j1,j2
       DO i=1,IM
@@ -960,13 +970,14 @@
       ady(i,JM1,k) = ady(i,JM,k)
       enddo
       endif
-2000  continue
+      
+      enddo
  
 !MIC$ do all autoscope
 !MIC$* shared(fz,adx,ady,im,jm,km)
 !MIC$* private(i,j,k)
 
-      DO 3000 k=1,km
+      DO k=1,km
       DO j=j1,j2
       do i=2,IM
       if(fx(i,j,k) .gt. 0.) then
@@ -1009,7 +1020,7 @@
       enddo
       endif
 
-3000  continue
+      enddo
  
       return
       end
@@ -1037,18 +1048,22 @@
       if(JORD.eq.1) then  
 !     upwind scheme
 
-         do 1000 j=2,jnp
-         do 1000 i=1,imr
+         do j=2,jnp
+         do i=1,imr
             if ( c(i,j).le.0. ) then
                jt = j
             else
                jt = j-1
             endif
-1000     fy1(i,j) = p(i,jt)
+         fy1(i,j) = p(i,jt)
+         enddo
+         enddo
 
-         do 1050 j=j1,j2+1
-         do 1050 i=1,imr
-1050     fy2(i,j) = 0.
+         do j=j1,j2+1
+         do i=1,imr
+         fy2(i,j) = 0.
+         enddo
+         enddo
 
       else
 
@@ -1062,27 +1077,33 @@
 
          else
 !        van Leer
-           do 1200 j=2,jnp
-           do 1200 i=1,imr
+           do j=2,jnp
+           do i=1,imr
               if ( c(i,j).le.0. ) then
                  jt = j
               else
                  jt = j-1
               endif
            fy1(i,j) = p(i,jt)
-1200       fy2(i,j) = (sign(1.,C(i,j))-C(i,j)/dlat(jt))*DC2(i,jt)
+           fy2(i,j) = (sign(1.,C(i,j))-C(i,j)/dlat(jt))*DC2(i,jt)
+           enddo
+           enddo
 
          endif ! van Leer or PPM
       endif    ! upwind or higher order
 
-      do 1300 j=2,jnp
-      do 1300 i=1,imr
+      do j=2,jnp
+      do i=1,imr
       fy1(i,j) = fy1(i,j)*ymass(i,j)
-1300  fy2(i,j) = fy2(i,j)*ymass(i,j)
+      fy2(i,j) = fy2(i,j)*ymass(i,j)
+      enddo
+      enddo
  
-      DO 1400 j=j1,j2
-      DO 1400 i=1,IMR
-1400  DQ(i,j) = DQ(i,j) + (fy1(i,j) - fy1(i,j+1)) * acosp(j)/dlat(j)
+      DO j=j1,j2
+      DO i=1,IMR
+      DQ(i,j) = DQ(i,j) + (fy1(i,j) - fy1(i,j+1)) * acosp(j)/dlat(j)
+      enddo
+      enddo
  
 ! Poles
       sum1 = fy1(IMR,j1  )
@@ -1133,18 +1154,19 @@
       imh = imr / 2
       jmr = jnp - 1
 
-      do 10 j=2,jmr 
-      do 10 i=1,imr
+      do j=2,jmr 
+      do i=1,imr
       tmp = 0.25*(p(i,j+1) - p(i,j-1))
       pmax = max(p(i,j-1),p(i,j),p(i,j+1)) - p(i,j)
       pmin = p(i,j) - min(p(i,j-1),p(i,j),p(i,j+1))
       dc(i,j) = sign(min(abs(tmp),pmin,pmax),tmp)
-10    continue
+      enddo
+      enddo
 !
 ! Poles:
 ! Determine slopes in polar caps for scalars!
  
-      do 20 i=1,IMH
+      do i=1,IMH
 ! South
       tmp = 0.25*(p(i,2) - p(i+imh,2))
       Pmax = max(p(i,2),p(i,1), p(i+imh,2)) - p(i,1)
@@ -1155,13 +1177,13 @@
       Pmax = max(p(i+imh,JMR),p(i,jnp), p(i,JMR)) - p(i,JNP)
       Pmin = p(i,JNP) - min(p(i+imh,JMR),p(i,jnp), p(i,JMR))
       DC(i,JNP) = sign(min(abs(tmp),Pmax,pmin),tmp)
-20    continue
+      enddo
  
 ! Scalars:
-      do 25 i=imh+1,IMR
+      do i=imh+1,IMR
       DC(i,  1) =  - DC(i-imh,  1)
       DC(i,JNP) =  - DC(i-imh,JNP)
-25    continue
+      enddo
 
       return
       end

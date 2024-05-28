@@ -9,9 +9,9 @@
 !MIC$* shared(P,Qmax,Qmin,im,jm,j1,j2)
 !MIC$* private(k,bt,bd)
 
-      DO 1000 k=1,km
+      DO k=1,km
       call hilo(P(1,1,k),im,jm,j1,j2,Qmax(1,1,k),Qmin(1,1,k),bt,bd)
-1000  continue
+      enddo
  
       km1 = km-1
       km2 = km-2
@@ -20,8 +20,8 @@
 !MIC$* shared(Pmax,Pmin,Qmax,Qmin,im,jm,km,km1,km2)
 !MIC$* private(i,j)
 
-      DO 2000 j=1,jm
-      DO 2000 i=1,im
+      DO j=1,jm
+      DO i=1,im
 ! k=1 and k=km
       Pmax(i,j, 1) = max(Qmax(i,j,  2),Qmax(i,j, 1))
       Pmin(i,j, 1) = min(Qmin(i,j,  2),Qmin(i,j, 1))
@@ -32,18 +32,21 @@
       Pmin(i,j,  2) = min(Qmin(i,j,  3),Pmin(i,j, 1))
       Pmax(i,j,km1) = max(Qmax(i,j,km2),Pmax(i,j,km))
       Pmin(i,j,km1) = min(Qmin(i,j,km2),Pmin(i,j,km))
-2000  continue
+      enddo
+      enddo
  
 !MIC$ do all autoscope
 !MIC$* shared(Pmax,Pmin,Qmax,Qmin,im,jm,km,km1,km2)
 !MIC$* private(i,j,k)
 
-      DO 3000 k=3,km2
-      DO 3000 j=1,jm
-      DO 3000 i=1,im
+      DO k=3,km2
+      DO j=1,jm
+      DO i=1,im
       Pmax(i,j,k) = max(Qmax(i,j,k-1),Qmax(i,j,k),Qmax(i,j,k+1))
       Pmin(i,j,k) = min(Qmin(i,j,k-1),Qmin(i,j,k),Qmin(i,j,k+1))
-3000  continue
+      enddo
+      enddo
+      enddo
       return
       end
  
@@ -148,18 +151,22 @@
 !MIC$* private(i,j,k,c1,c2,tmp,qmax,qmin,A1,A2,d1,d2,qm,dp,c3)
 !MIC$* private(cmax,cmin,DC,delq,AR,AL,A6,CM,CP)
 
-      do 4000 j=1,JNP
+      do j=1,JNP
 
-      do 500 k=2,km
-      do 500 i=1,IMR
-500   A6(i,k) = delp(i,j,k-1) + delp(i,j,k)
+      do k=2,km
+      do i=1,IMR
+      A6(i,k) = delp(i,j,k-1) + delp(i,j,k)
+      enddo
+      enddo
 
-      do 1000 k=1,km1
-      do 1000 i=1,IMR
-1000  delq(i,k) = P(i,j,k+1) - P(i,j,k)
+      do k=1,km1
+      do i=1,IMR
+      delq(i,k) = P(i,j,k+1) - P(i,j,k)
+      enddo
+      enddo
  
-      DO 1220 k=2,km1
-      DO 1220 I=1,IMR
+      DO k=2,km1
+      DO I=1,IMR
       c1 = (delp(i,j,k-1)+0.5*delp(i,j,k))/A6(i,k+1)
       c2 = (delp(i,j,k+1)+0.5*delp(i,j,k))/A6(i,k)
       tmp = delp(i,j,k)*(c1*delq(i,k) + c2*delq(i,k-1)) &
@@ -167,7 +174,8 @@
       Qmax = max(P(i,j,k-1),P(i,j,k),P(i,j,k+1)) - P(i,j,k)
       Qmin = P(i,j,k) - min(P(i,j,k-1),P(i,j,k),P(i,j,k+1))
       DC(i,k) = sign(min(abs(tmp),Qmax,Qmin), tmp)
-1220  CONTINUE
+      enddo
+      enddo
  
 !****6***0*********0*********0*********0*********0*********0**********72
 ! Compute the first guess at cell interface
@@ -176,19 +184,20 @@
  
 ! Interior.
  
-      DO 12 k=3,km1
-      DO 12 i=1,IMR
+      DO k=3,km1
+      DO i=1,IMR
       c1 = delq(i,k-1)*delp(i,j,k-1) / A6(i,k)
       A1 = A6(i,k-1) / (A6(i,k) + delp(i,j,k-1))
       A2 = A6(i,k+1) / (A6(i,k) + delp(i,j,k))
       AL(i,k) = P(i,j,k-1) + c1 + 2./(A6(i,k-1)+A6(i,k+1)) *  &
                 ( delp(i,j,k  )*(c1*(A1 - A2)+A2*DC(i,k-1)) - &
                                 delp(i,j,k-1)*A1*DC(i,k  ) )
-12    CONTINUE
+      enddo
+      enddo
  
 ! Area preserving cubic with 2nd deriv. = 0 at the boundaries
 ! Top
-      DO 10 i=1,IMR
+      DO i=1,IMR
       d1 = delp(i,j,1)
       d2 = delp(i,j,2)
       qm = (d2*P(i,j,1)+d1*P(i,j,2)) / (d1+d2)
@@ -205,10 +214,11 @@
       Cmin = min(P(i,j,1), P(i,j,2))
       AL(i,2) = max(Cmin,AL(i,2))
       AL(i,2) = min(Cmax,AL(i,2))
-10    continue
+      enddo
+      
  
 ! Bottom
-      DO 15 i=1,IMR
+      DO i=1,IMR
       d1 = delp(i,j,km )
       d2 = delp(i,j,km1)
       qm = (d2*P(i,j,km)+d1*P(i,j,km1)) / (d1+d2)
@@ -225,19 +235,21 @@
       AL(i,km) = min(Cmax,AL(i,km))
       AR(i,km) = max(Bmin,AR(i,km))
       AR(i,km) = min(Bmax,AR(i,km))
-15    continue
+      enddo
 
-      do 20 k=1,km1
-      do 20 i=1,IMR
+      do k=1,km1
+      do i=1,IMR
       AR(i,k) = AL(i,k+1)
-20    continue
+      enddo
+      enddo
  
 ! f(s) = AL + s*[(AR-AL) + A6*(1-s)]         ( 0 <= s  <= 1 )
  
-      do 30 k=1,NL
-      do 30 i=1,IMR
+      do k=1,NL
+      do i=1,IMR
       A6(i,k) = 3.*(P(i,j,k)+P(i,j,k) - (AL(i,k)+AR(i,k)))
-30    continue
+      enddo
+      enddo
  
 ! Top
       call lmtppm(DC(1,1),A6(1,1),AR(1,1),AL(1,1),P(1,j,1), &
@@ -253,8 +265,8 @@
       enddo
       endif
  
-      DO 140 k=2,NL
-      DO 140 i=1,IMR
+      DO k=2,NL
+      DO i=1,IMR
       IF(WZ(i,j,k-1).GT.0.) then
              CM = WZ(i,j,k-1) / delp(i,j,k-1)
       DC(i,k) = P(i,j,k-1)
@@ -266,26 +278,30 @@
       fz(i,j,k) = AL(i,k)+0.5*CP*(AL(i,k)-AR(i,k)- &
                           A6(i,k)*(1.+R23*CP))
       endif
-140   continue
+      enddo
+      enddo
  
-      DO 250 k=2,NL
-      DO 250 i=1,IMR
+      DO k=2,NL
+      DO i=1,IMR
       fz(i,j,k) = WZ(i,j,k-1) * (fz(i,j,k) - DC(i,k))
       DC(i,k) = WZ(i,j,k-1) * DC(i,k)
-250   continue
+      enddo
+      enddo
 
-      do 350 i=1,IMR
+      do i=1,IMR
       fz(i,j,   1) = 0.
       fz(i,j,NL+1) = 0.
       DQ(i,j, 1) = DQ(i,j, 1) - DC(i, 2)
       DQ(i,j,NL) = DQ(i,j,NL) + DC(i,NL)
-350   continue
+      enddo
  
-      do 360 k=2,km1
-      do 360 i=1,IMR
-360   DQ(i,j,k) = DQ(i,j,k) + DC(i,k) - DC(i,k+1)
+      do k=2,km1
+      do i=1,IMR
+      DQ(i,j,k) = DQ(i,j,k) + DC(i,k) - DC(i,k+1)
+      enddo
+      enddo
  
-4000  continue
+      enddo
       return
       end
  
@@ -305,121 +321,128 @@
       j1vl = j1+jvan
       j2vl = j2-jvan
 !
-      do 1310 j=j1,j2
+      do j=j1,j2
 !
       do i=1,IMR
       qtmp(i) = q(i,j)
       enddo
 !
-      if(j.ge.JN .or. j.le.JS) goto 2222
+      if(j.ge.JN .or. j.le.JS) then
+  !
+!****6***0*********0*********0*********0*********0*********0**********72
+! *** Conservative (flux-form) Semi-Lagrangian transport ***
+!****6***0*********0*********0*********0*********0*********0**********72
+!    
+        do i=-IML,0
+        qtmp(i)     = q(IMR+i,j)
+        qtmp(IMP-i) = q(1-i,j)
+        enddo
+    !
+        IF(IORD.eq.1 .or. j.eq.j1 .or. j.eq.j2) THEN
+            DO i=1,IMR
+            itmp = INT(c(i,j))
+            ISAVE(i) = i - itmp
+            iu = i - c(i,j)
+            fx1(i) = (c(i,j) - itmp)*qtmp(iu)
+            ENDDO
+        !
+        ! Zero high order contribution
+            DO i=1,IMR
+            fx2(i,j) = 0.
+            enddo
+        ELSE
+            call xmist(IMR,IML,Qtmp,DC)
+        !
+            do i=-IML,0
+            DC(i)     = DC(IMR+i)
+            DC(IMP-i) = DC(1-i)
+            enddo
+        !
+            DO i=1,IMR
+            itmp = INT(c(i,j))
+            rut  = c(i,j) - itmp
+            ISAVE(i) = i - itmp
+            iu = i - c(i,j)
+            fx1(i  ) = rut*qtmp(iu)
+            fx2(i,j) = rut*DC(iu)*(sign(1.,rut) - rut)
+            ENDDO
+        ENDIF
+    !
+        do i=1,IMR
+        IF(c(i,j).GT.1.) then
+    !DIR$ NOVECTOR
+            do ist = ISAVE(i),i-1
+            fx1(i) = fx1(i) + qtmp(ist)
+            enddo
+        elseIF(c(i,j).LT.-1.) then
+    !DIR$ NOVECTOR
+            do ist = i,ISAVE(i)-1
+            fx1(i) = fx1(i) - qtmp(ist)
+            enddo
+        endif
+        enddo
+    !DIR$ VECTOR
+        do i=1,IMR
+        fx1(i)   = PU(i,j)*fx1(i)
+        fx2(i,j) = PU(i,j)*fx2(i,j)
+        enddo
+      
+      else
 !****6***0*********0*********0*********0*********0*********0**********72
 ! *** Eulerian ***
 !****6***0*********0*********0*********0*********0*********0**********72
 !
-      qtmp(0)     = q(IMR,J)
-      qtmp(-1)    = q(IMR-1,J)
-      qtmp(IMP)   = q(1,J)
-      qtmp(IMP+1) = q(2,J)
+        qtmp(0)     = q(IMR,J)
+        qtmp(-1)    = q(IMR-1,J)
+        qtmp(IMP)   = q(1,J)
+        qtmp(IMP+1) = q(2,J)
+    !
+        IF(IORD.eq.1 .or. j.eq.j1 .or. j.eq.j2) THEN
+            DO i=1,IMR
+            iu = float(i) - c(i,j)
+            fx1(i) = qtmp(iu)
+            ENDDO
+        !
+        ! Zero high order contribution
+            DO i=1,IMR
+            fx2(i,j) = 0.
+            enddo
+        ELSE
+            call xmist(IMR,IML,Qtmp,DC)
+            DC(0) = DC(IMR)
+        !
+            if(IORD.eq.2 .or. j.le.j1vl .or. j.ge.j2vl) then
+                DO i=1,IMR
+                iu = float(i) - c(i,j)
+                fx1(i  ) = qtmp(iu)
+                fx2(i,j) = DC(iu)*(sign(1.,c(i,j))-c(i,j))
+                ENDDO
+            else
+                call fxppm(IMR,IML,C(1,j),Qtmp,DC,fx1,fx2(1,j),IORD)
+            endif
+    !
+        ENDIF
+    !
+        DO i=1,IMR
+        fx1(i  ) = fx1(i  )*xmass(i,j)
+        fx2(i,j) = fx2(i,j)*xmass(i,j)
+        ENDDO
 !
-      IF(IORD.eq.1 .or. j.eq.j1 .or. j.eq.j2) THEN
-      DO 1406 i=1,IMR
-      iu = float(i) - c(i,j)
-1406  fx1(i) = qtmp(iu)
-!
-! Zero high order contribution
-      DO i=1,IMR
-      fx2(i,j) = 0.
-      enddo
-      ELSE
-      call xmist(IMR,IML,Qtmp,DC)
-      DC(0) = DC(IMR)
-!
-      if(IORD.eq.2 .or. j.le.j1vl .or. j.ge.j2vl) then
-      DO 1408 i=1,IMR
-      iu = float(i) - c(i,j)
-      fx1(i  ) = qtmp(iu)
-1408  fx2(i,j) = DC(iu)*(sign(1.,c(i,j))-c(i,j))
-      else
-      call fxppm(IMR,IML,C(1,j),Qtmp,DC,fx1,fx2(1,j),IORD)
       endif
 !
-      ENDIF
-!
-      DO 1506 i=1,IMR
-      fx1(i  ) = fx1(i  )*xmass(i,j)
-1506  fx2(i,j) = fx2(i,j)*xmass(i,j)
-!
-      goto 1309
-!
-!****6***0*********0*********0*********0*********0*********0**********72
-! *** Conservative (flux-form) Semi-Lagrangian transport ***
-!****6***0*********0*********0*********0*********0*********0**********72
-!
-2222  continue
-!
-      do i=-IML,0
-      qtmp(i)     = q(IMR+i,j)
-      qtmp(IMP-i) = q(1-i,j)
-      enddo
-!
-      IF(IORD.eq.1 .or. j.eq.j1 .or. j.eq.j2) THEN
-      DO 1306 i=1,IMR
-      itmp = INT(c(i,j))
-      ISAVE(i) = i - itmp
-      iu = i - c(i,j)
-1306  fx1(i) = (c(i,j) - itmp)*qtmp(iu)
-!
-! Zero high order contribution
-      DO i=1,IMR
-      fx2(i,j) = 0.
-      enddo
-      ELSE
-      call xmist(IMR,IML,Qtmp,DC)
-!
-      do i=-IML,0
-      DC(i)     = DC(IMR+i)
-      DC(IMP-i) = DC(1-i)
-      enddo
-!
-      DO 1307 i=1,IMR
-      itmp = INT(c(i,j))
-      rut  = c(i,j) - itmp
-      ISAVE(i) = i - itmp
-      iu = i - c(i,j)
-      fx1(i  ) = rut*qtmp(iu)
-1307  fx2(i,j) = rut*DC(iu)*(sign(1.,rut) - rut)
-      ENDIF
-!
-      do 1308 i=1,IMR
-      IF(c(i,j).GT.1.) then
-!DIR$ NOVECTOR
-        do ist = ISAVE(i),i-1
-        fx1(i) = fx1(i) + qtmp(ist)
-        enddo
-      elseIF(c(i,j).LT.-1.) then
-!DIR$ NOVECTOR
-        do ist = i,ISAVE(i)-1
-        fx1(i) = fx1(i) - qtmp(ist)
-        enddo
-      endif
-1308  continue
-!DIR$ VECTOR
-      do i=1,IMR
-      fx1(i)   = PU(i,j)*fx1(i)
-      fx2(i,j) = PU(i,j)*fx2(i,j)
-      enddo
 !
 !****6***0*********0*********0*********0*********0*********0**********72
 !
-1309  fx1(IMP  ) = fx1(1  )
+      fx1(IMP  ) = fx1(1  )
       fx2(IMP,j) = fx2(1,j)
 ! Update using low order fluxes.
-      DO 1215 i=1,IMR
-1215  DQ(i,j) =  DQ(i,j) + fx1(i)-fx1(i+1)
+      DO i=1,IMR
+      DQ(i,j) =  DQ(i,j) + fx1(i)-fx1(i+1)
+      ENDDO
 !
 !****6***0*********0*********0*********0*********0*********0**********72
 !
-1310  continue
+      enddo
       return
       end
  
@@ -432,15 +455,18 @@
  
       LMT = IORD - 3
  
-      DO 10 i=1,IMR
-10    AL(i) = 0.5*(p(i-1)+p(i)) + (DC(i-1) - DC(i))*R3
+      DO i=1,IMR
+      AL(i) = 0.5*(p(i-1)+p(i)) + (DC(i-1) - DC(i))*R3
+      ENDDO
  
-      do 20 i=1,IMR-1
-20    AR(i) = AL(i+1)
+      do i=1,IMR-1
+      AR(i) = AL(i+1)
+      enddo
       AR(IMR) = AL(1)
  
-      do 30 i=1,IMR
-30    A6(i) = 3.*(p(i)+p(i)  - (AL(i)+AR(i)))
+      do i=1,IMR
+      A6(i) = 3.*(p(i)+p(i)  - (AL(i)+AR(i)))
+      enddo
  
       if(LMT.LE.2) call lmtppm(DC(1),A6(1),AR(1),AL(1),P(1),IMR,LMT)
  
@@ -481,10 +507,10 @@
       len   = IMR*(J2-J1+3)
       LMT = JORD - 3
  
-      DO 10 i=1,IMR*JMR
+      DO i=1,IMR*JMR
       AL(i,2) = 0.5*(p(i,1)+p(i,2)) + (DC(i,1) - DC(i,2))*R3
       AR(i,1) = AL(i,2)
-10    CONTINUE
+      ENDDO
 !
 ! Poles:
 !
@@ -496,13 +522,14 @@
       AR(i+IMH,JNP) = AR(i,JMR)
       enddo
 !
-      do 30 i=1,len
-30    A6(i,j11) = 3.*(p(i,j11)+p(i,j11)  - (AL(i,j11)+AR(i,j11)))
+      do i=1,len
+      A6(i,j11) = 3.*(p(i,j11)+p(i,j11)  - (AL(i,j11)+AR(i,j11)))
+      enddo
  
       if(LMT.le.2) call lmtppm(DC(1,j11),A6(1,j11),AR(1,j11), &
                                AL(1,j11),P(1,j11),len,LMT)
  
-      DO 140 i=1,IMJM1
+      DO i=1,IMJM1
       IF(C(i,j1).GT.0.) then
       fy1(i,j1) = P(i,j11)
       fy2(i,j1) = AR(i,j11) + 0.5*C(i,j1)*(AL(i,j11) - AR(i,j11) + &
@@ -512,7 +539,7 @@
       fy2(i,j1) = AL(i,j1) - 0.5*C(i,j1)*(AR(i,j1) - AL(i,j1) + &
                               A6(i,j1)*(1.+R23*C(i,j1)))
       endif
-140   continue
+      ENDDO
  
       DO i=1,IMJM1
       fy2(i,j1) = fy2(i,j1) - fy1(i,j1)
@@ -526,8 +553,8 @@
       REAL p(IMR,JNP),adx(IMR,JNP),qtmp(-IMR:IMR+IMR),UA(IMR,JNP)
  
       JMR = JNP-1
-      do 1309 j=j1,j2
-      if(J.GT.JS  .and. J.LT.JN) GO TO 1309
+      outer: do j=j1,j2
+      if(J.GT.JS  .and. J.LT.JN) EXIT outer
  
       do i=1,IMR
       qtmp(i) = p(i,j)
@@ -552,7 +579,7 @@
       do i=1,IMR
       adx(i,j) = adx(i,j) - p(i,j)
       enddo
-1309  continue
+      enddo outer
  
 ! Eulerian upwind
  
@@ -593,11 +620,12 @@
 !
 ! 2nd order version.
 !
-      do 10  i=1,IMR
+      do i=1,IMR
       tmp = 0.25*(p(i+1) - p(i-1))
       Pmax = max(P(i-1), p(i), p(i+1)) - p(i)
       Pmin = p(i) - min(P(i-1), p(i), p(i+1))
-10    DC(i) = sign(min(abs(tmp),Pmax,Pmin), tmp)
+      DC(i) = sign(min(abs(tmp),Pmax,Pmin), tmp)
+      enddo
       return
       end
  
@@ -623,7 +651,7 @@
  
       if(LMT.eq.0) then
 ! Full constraint
-      do 100 i=1,IM
+      do i=1,IM
       if(DC(i).eq.0.) then
             AR(i) = p(i)
             AL(i) = p(i)
@@ -640,11 +668,12 @@
             AL(i) = AR(i) - A6(i)
       endif
       endif
-100   continue
-      elseif(LMT.eq.1) then
+      enddo
+
+      else if(LMT.eq.1) then
 ! Semi-monotonic constraint
-      do 150 i=1,IM
-      if(abs(AR(i)-AL(i)) .GE. -A6(i)) go to 150
+      outer1: do i=1,IM
+      if(abs(AR(i)-AL(i)) .GE. -A6(i)) exit outer1
       if(p(i).lt.AR(i) .and. p(i).lt.AL(i)) then
             AR(i) = p(i)
             AL(i) = p(i)
@@ -656,12 +685,13 @@
             A6(i) = 3.*(AR(i)-p(i))
             AL(i) = AR(i) - A6(i)
       endif
-150   continue
-      elseif(LMT.eq.2) then
-      do 250 i=1,IM
-      if(abs(AR(i)-AL(i)) .GE. -A6(i)) go to 250
+      enddo outer1
+      
+      else if(LMT.eq.2) then
+      outer2: do i=1,IM
+      if(abs(AR(i)-AL(i)) .GE. -A6(i)) exit outer2
       fmin = p(i) + 0.25*(AR(i)-AL(i))**2/A6(i) + A6(i)*R12
-      if(fmin.ge.0.) go to 250
+      if(fmin.ge.0.) exit outer2
       if(p(i).lt.AR(i) .and. p(i).lt.AL(i)) then
             AR(i) = p(i)
             AL(i) = p(i)
@@ -673,7 +703,7 @@
             A6(i) = 3.*(AR(i)-p(i))
             AL(i) = AR(i) - A6(i)
       endif
-250   continue
+      enddo outer2
       endif
       return
       end
@@ -683,20 +713,23 @@
 !****6***0*********0*********0*********0*********0*********0**********72
       REAL cosp(*),cose(*),sine(JM)
  
-      do 10 j=2,JM
+      do j=2,JM
          ph5  = -0.5*PI + (float(j-1)-0.5)*DP
-10    sine(j) = SIN(ph5)
+         sine(j) = SIN(ph5)
+      enddo
  
-      do 80 J=2,JM-1
-80    cosp(J) = (sine(j+1)-sine(j))/DP
+      do J=2,JM-1
+         cosp(J) = (sine(j+1)-sine(j))/DP
+      enddo
  
       cosp( 1) = 0.
       cosp(JM) = 0.
  
 ! Define cosine at edges..
 
-      do 90 j=2,JM
-90    cose(j) = 0.5 * (cosp(j-1)+cosp(j))
+      do j=2,JM
+         cose(j) = 0.5 * (cosp(j-1)+cosp(j))
+      enddo
       cose(1) = cose(2)
       return
       end
@@ -706,19 +739,20 @@
 !****6***0*********0*********0*********0*********0*********0**********72
       REAL cosp(*),cose(*)
       phi = -0.5*PI
-      do 55 j=2,JNP-1
-      phi  =  phi + DP
-55    cosp(j) = cos(phi)
+      do j=2,JNP-1
+        phi  =  phi + DP
+        cosp(j) = cos(phi)
+      enddo
       cosp(  1) = 0.
       cosp(JNP) = 0.
  
-      do 66 j=2,JNP
-      cose(j) = 0.5*(cosp(j)+cosp(j-1))
-66    CONTINUE
+      do j=2,JNP
+        cose(j) = 0.5*(cosp(j)+cosp(j-1))
+      enddo
  
-      do 77 j=2,JNP-1
-      cosp(j) = 0.5*(cose(j)+cose(j+1))
-77    CONTINUE
+      do j=2,JNP-1
+        cosp(j) = 0.5*(cose(j)+cose(j+1))
+      enddo
       return
       end
  
@@ -728,9 +762,10 @@
       REAL a(*)
       Pmax = a(n)
       Pmin = a(n)
-      do 10 i=1,n-1
-      Pmax = amax1(Pmax,a(i))
-10    Pmin = amin1(Pmin,a(i))
+      do i=1,n-1
+        Pmax = amax1(Pmax,a(i))
+        Pmin = amin1(Pmin,a(i))
+      enddo
       return
       end
 
@@ -750,11 +785,11 @@
 !MIC$ do all autoscope
 !MIC$* private(i,j,L,qtmp)
 
-      do 1000 L=1,NLAY
+      do L=1,NLAY
          call filns(q(1,1,L),IMR,JNP,j1,j2,cosp,acosp,ip(L),tiny)
          if(ip(L).ne.0) &
          call filew(q(1,1,L),qtmp,IMR,JNP,j1,j2,ip(L),tiny)
-1000  continue
+     enddo
 
       ipz = 0
       do L=1,NLAY
@@ -780,7 +815,7 @@
 !MIC$ do all autoscope
 !MIC$* private(i,j,L,qup,qly,dup)
 
-      do 2000 j=j1,j2
+      do j=j1,j2
 
       if(ipz .eq. 1) then
 ! Top layer
@@ -792,7 +827,7 @@
       enddo
       endif
  
-      DO 225 L = lpz,NLM1
+      DO L = lpz,NLM1
       do i=1,IMR
       IF( Q(i,j,L).LT.0.) THEN
 ! From above
@@ -806,7 +841,7 @@
           Q(i,j,L)   = 0.
       ENDIF
       enddo
-225   CONTINUE
+      enddo
  
 ! BOTTOM LAYER
       L = NLAY
@@ -824,7 +859,7 @@
           Q(i,j,L) = 0.
       ENDIF
       enddo
-2000  continue
+      enddo
 
       RETURN
       END
@@ -844,8 +879,8 @@
       endif
  
       ipy = 0
-      do 55 j=j1+1,j2-1
-      DO 55 i=1,IMR
+      do j=j1+1,j2-1
+      DO i=1,IMR
       IF(q(i,j).LT.0.) THEN
       ipy =  1
       dq  = - q(i,j)*cosp(j)
@@ -862,7 +897,8 @@
       q(i,j-1) = (ds - d2)*acosp(j-1)
       q(i,j) = (d2 - dq)*acosp(j) + tiny
       endif
-55    continue
+      enddo
+      enddo
  
       do i=1,imr
       IF(q(i,j1).LT.0.) THEN
@@ -920,12 +956,14 @@
  
       ipx = 0
 ! Copy & swap direction for vectorization.
-      do 25 i=1,imr
-      do 25 j=j1,j2
-25    qtmp(j,i) = q(i,j)
+      do i=1,imr
+      do j=j1,j2
+      qtmp(j,i) = q(i,j)
+      enddo
+      enddo
  
-      do 55 i=2,imr-1
-      do 55 j=j1,j2
+      do i=2,imr-1
+      do j=j1,j2
       if(qtmp(j,i).lt.0.) then
       ipx =  1
 ! west
@@ -939,10 +977,11 @@
       qtmp(j,i+1) = qtmp(j,i+1) - d2
       qtmp(j,i) = qtmp(j,i) + d2 + tiny
       endif
-55    continue
+      enddo
+      enddo
  
       i=1
-      do 65 j=j1,j2
+      do j=j1,j2
       if(qtmp(j,i).lt.0.) then
       ipx =  1
 ! west
@@ -957,9 +996,10 @@
  
       qtmp(j,i) = qtmp(j,i) + d2 + tiny
       endif
-65    continue
+      enddo
+      
       i=IMR
-      do 75 j=j1,j2
+      do j=j1,j2
       if(qtmp(j,i).lt.0.) then
       ipx =  1
 ! west
@@ -974,12 +1014,14 @@
  
       qtmp(j,i) = qtmp(j,i) + d2 + tiny
       endif
-75    continue
+      enddo
  
       if(ipx.ne.0) then
-      do 85 j=j1,j2
-      do 85 i=1,imr
-85    q(i,j) = qtmp(j,i)
+      do j=j1,j2
+      do i=1,imr
+      q(i,j) = qtmp(j,i)
+      enddo
+      enddo
       else
 
 ! Pole
