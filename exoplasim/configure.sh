@@ -358,15 +358,15 @@ oldcpp=$CXX
 export CC=gcc
 export CXX=g++
 #Compile pyfft libraries for Python 2
-f2py2 -c -m --f90exec=gfortran --f77exec=gfortran --f90flags="-O3" pyfft2 pyfft.f90 || f2py -c -m --f90exec=gfortran --f77exec=gfortran --f90flags="-O3" pyfft2 pyfft.f90
-f2py2 -c -m --f90exec=gfortran --f77exec=gfortran --f90flags="-O3" pyfft991v2 pyfft991.f90 || f2py -c -m --f90exec=gfortran --f77exec=gfortran --f90flags="-O3" pyfft991v2 pyfft991.f90
+# f2py2 -c -m --f90exec=gfortran --f77exec=gfortran --f90flags="-O3" pyfft2 pyfft.f90 || f2py -c -m --f90exec=gfortran --f77exec=gfortran --f90flags="-O3" pyfft2 pyfft.f90
+# f2py2 -c -m --f90exec=gfortran --f77exec=gfortran --f90flags="-O3" pyfft991v2 pyfft991.f90 || f2py -c -m --f90exec=gfortran --f77exec=gfortran --f90flags="-O3" pyfft991v2 pyfft991.f90
 
 #Compile pyfft libraries for Python 3
 # f2py$pyversion -c -m --f90exec=gfortran --f77exec=gfortran --f90flags="-O3" pyfft pyfft.f90 && mv pyfft.cpython*.so pyfft.so
 # f2py$pyversion -c -m --f90exec=gfortran --f77exec=gfortran --f90flags="-O3" pyfft991 pyfft991.f90 && mv pyfft991.cpython*.so pyfft991.so
 echo "python$pyversion -m numpy.f2py -c -m --f90exec=gfortran --f77exec=gfortran --f90flags="-O3" pyfft pyfft.f90 && mv pyfft.cpython*.so pyfft.so"
-python$pyversion -m numpy.f2py -c -m --f90exec=gfortran --f77exec=gfortran --f90flags="-O3" pyfft pyfft.f90 && mv pyfft.cpython*.so pyfft.so
-python$pyversion -m numpy.f2py -c -m --f90exec=gfortran --f77exec=gfortran --f90flags="-O3" pyfft991 pyfft991.f90 && mv pyfft991.cpython*.so pyfft991.so
+python$pyversion -m numpy.f2py -c --f90exec=gfortran --f77exec=gfortran --f90flags="-O3" -m pyfft pyfft.f90 && mv pyfft.cpython*.so pyfft.so
+python$pyversion -m numpy.f2py -c --f90exec=gfortran --f77exec=gfortran --f90flags="-O3" -m pyfft991 pyfft991.f90 && mv pyfft991.cpython*.so pyfft991.so
     
     
 export CC=$oldcc
