@@ -562,14 +562,14 @@
 ! Do transport one tracer at a time.
 !****6***0*********0*********0*********0*********0*********0**********72
  
-      DO 5000 ic=1,nc
+      DO ic=1,nc
  
 !MIC$ do all autoscope
 !MIC$* shared(q,DQ,delp1,U,V,j1,j2,JS,JN,im,jm,IML,IC,IORD,JORD)
 !MIC$* shared(CRX,CRY,PU,xmass,ymass,fx,fy,acosp,rcap,qz)
 !MIC$* private(i,j,k,jt,wk,DG2)
 
-      do 2500 k=1,nl
+      do k=1,nl
 
 ! for the polar caps: replace the mixing ratio at the northest (southest)
 ! latitude with the zonal mean. 
