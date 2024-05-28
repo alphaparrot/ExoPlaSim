@@ -297,7 +297,7 @@
 !
 !     get process id
 !
-      call mpi_info(nproc,mypid)
+      call ompi_info(nproc,mypid)
 !
 !     print version number and read namelist
 !

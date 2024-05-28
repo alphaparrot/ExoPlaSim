@@ -151,7 +151,7 @@
 !
 !     get process id
 !
-      call mpi_info(nproc,mypid)
+      call ompi_info(nproc,mypid)
 !
 !     compute grids properties
 !

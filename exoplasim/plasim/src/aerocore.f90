@@ -356,26 +356,26 @@
 
       do k=1,nl ! Vertical loop
 
-      js(k) = j1 ! Southernmost lat outside polar cap
-      jn(k) = j2 ! Northernmost lat outside polar cap
- 
-      do 111 j=js0,j1+1,-1 ! Just for these lats
-      do 111 i=1,im ! For all lons
-      if(abs(crx(i,j,k)) .gt. 1.) then
-            js(k) = j ! If zonal Courant number is >1, extend limit of semi-Lagrangian treatment at southern polar cap
-            go to 112
-      endif
-111   continue
-112   continue
+        js(k) = j1 ! Southernmost lat outside polar cap
+        jn(k) = j2 ! Northernmost lat outside polar cap
+    
+        outer1: do j=js0,j1+1,-1 ! Just for these lats
+            do i=1,im ! For all lons
+                if(abs(crx(i,j,k)) .gt. 1.) then
+                        js(k) = j ! If zonal Courant number is >1, extend limit of semi-Lagrangian treatment at southern polar cap
+                        exit outer1
+                endif
+            enddo
+        enddo outer1
 
-      do 122 j=jn0,j2-1 ! For these lats
-      do 122 i=1,im ! For all lons
-      if(abs(crx(i,j,k)) .gt. 1.) then 
-            jn(k) = j ! If zonal Courant number is >1, extend limit of semi-Lagrangian treatment at northern polar cap
-            go to 133
-      endif
-122   continue
-133   continue
+        outer2: do j=jn0,j2-1 ! For these lats
+            do i=1,im ! For all lons
+                if(abs(crx(i,j,k)) .gt. 1.) then 
+                        jn(k) = j ! If zonal Courant number is >1, extend limit of semi-Lagrangian treatment at northern polar cap
+                        exit outer2
+                endif
+            enddo
+        enddo outer2
 
       enddo  !end vertical layer loop. We have set the limits of the caps for this timestep to ensure stability.
  
@@ -610,7 +610,7 @@
 ! Do transport one tracer at a time.
 !****6***0*********0*********0*********0*********0*********0**********72
  
-      DO 5000 ic=1,naero ! From aerosol 1 to however many there are
+      DO ic=1,naero ! From aerosol 1 to however many there are
  
 !MIC$ do all autoscope
 !MIC$* shared(q,DQ,delp1,U,V,j1,j2,JS,JN,im,jm,IML,IC,IORD,JORD)
@@ -635,7 +635,7 @@
        end select
       end if
       
-      do 2500 k=1,nl ! Vertical levels loop
+      do k=1,nl ! Vertical levels loop
 
 ! for the polar caps: replace the mixing ratio at the northest (southest)
 ! latitude with the zonal mean. 
@@ -656,14 +656,18 @@
       wk(:,:,1) = mmr(:,:,k,ic) + 0.5*wk(:,:,1) 
  
 ! N-S advective cross term
-      do 66 j=j1,j2
-      do 66 i=1,im
-      jt = float(j) - v(i,j,k)
-66    wk(i,j,2) = v(i,j,k) * (mmr(i,jt,k,ic) - mmr(i,jt+1,k,ic))
+      do j=j1,j2
+        do i=1,im
+          jt = float(j) - v(i,j,k)
+          wk(i,j,2) = v(i,j,k) * (mmr(i,jt,k,ic) - mmr(i,jt+1,k,ic))
+        enddo
+      enddo
  
-      do 77 j=j1,j2
-      do 77 i=1,im
-77    wk(i,j,2) = mmr(i,j,k,ic) + 0.5*wk(i,j,2)
+      do j=j1,j2
+        do i=1,im
+          wk(i,j,2) = mmr(i,j,k,ic) + 0.5*wk(i,j,2)
+        enddo
+      enddo
 
 !****6***0*********0*********0*********0*********0*********0**********72
 ! compute flux in  E-W direction - 2-D fluxes untouched from tpcore
@@ -682,19 +686,23 @@
 ! vertical transport operator FZPPM
 ! Note: DQ contains only first order upwind contribution.
 
-      do 88 j=1,JM
-      do 88 i=1,IM
-88    qz(i,j,k) = daero(i,j,k) / delp(i,j,k)
+        do j=1,JM
+            do i=1,IM
+            qz(i,j,k) = daero(i,j,k) / delp(i,j,k)
+            enddo
+        enddo
 
       else
 
-      do 99 j=1,JM
-      do 99 i=1,IM
-99    qz(i,j,k) = mmr(i,j,k,IC)
+        do j=1,JM
+            do i=1,IM
+            qz(i,j,k) = mmr(i,j,k,IC)
+            enddo
+        enddo
 
       endif
        
-2500  continue     ! end of k-loop
+      enddo     ! end of k-loop
 
  
 !****6***0*********0*********0*********0*********0*********0**********72
@@ -720,15 +728,17 @@
 
       DO k=1,NL ! For all levels
 
-      DO 560 j=1,JM ! For all lats
-      DO 560 i=1,IM ! For all lons
-560   qlow(i,j,k) = daero(i,j,k) / delp2(i,j,k) !
+      DO j=1,JM ! For all lats
+        DO i=1,IM ! For all lons
+          qlow(i,j,k) = daero(i,j,k) / delp2(i,j,k) !
+        enddo
+      enddo
  
       if(j1.ne.2) then
-      DO 561 i=1,IM
-      qlow(i,   2,k) = qlow(i, 1,k)
-      qlow(i,jm-1,k) = qlow(i,jm,k)
-561   CONTINUE
+        DO i=1,IM
+            qlow(i,   2,k) = qlow(i, 1,k)
+            qlow(i,jm-1,k) = qlow(i,jm,k)
+        enddo
       endif
 
       enddo
@@ -760,47 +770,48 @@
       sum2 = fy(IM,J2+1,1) ! fy at last lon, northernmost lat, level k
 
       do i=1,IM-1 ! For all other lons
-      sum1 = sum1 + fy(i,j1  ,1) ! Add fy for last lon at southernmost lat
-      sum2 = sum2 + fy(i,J2+1,1) ! Add fy for last lon at northernmost lat
+        sum1 = sum1 + fy(i,j1  ,1) ! Add fy for last lon at southernmost lat
+        sum2 = sum2 + fy(i,J2+1,1) ! Add fy for last lon at northernmost lat
       enddo
  
       daero(1, 1,1) = daero(1, 1,1) - sum1*RCAP + fz(1, 1,1) - fz(1, 1,2) ! First lon, southernmost lat
       daero(1,JM,1) = daero(1,JM,1) + sum2*RCAP + fz(1,JM,1) - fz(1,JM,2) ! First lon, northernmost lat
  
       do i=2,IM ! All other lons except first
-      daero(i, 1,1) = daero(1, 1,1) ! At southernmost lat, daero is equal to daero at first lon
-      daero(i,JM,1) = daero(1,JM,1) ! At northernmost lat, daero is equal to daero at first lon
+        daero(i, 1,1) = daero(1, 1,1) ! At southernmost lat, daero is equal to daero at first lon
+        daero(i,JM,1) = daero(1,JM,1) ! At northernmost lat, daero is equal to daero at first lon
       enddo							
 
 ! For all levels except the top and bottom, add flux from level above and subtract flux falling out of current level
-      do 101 k=2,NL
+      do k=2,NL
 
-      do 425 j=j1,j2 ! Between the caps
-      do 425 i=1,IM ! For all lons
-      daero(i,j,k) = daero(i,j,k) +  fx(i,j,k) - fx(i+1,j,k)             &
-                            + (fy(i,j,k) - fy(i,j+1,k))*acosp(j)/dlat(j) &
-                            +  fz(i,j,k) - fz(i,j,k+1)                   &
-                            + (gz(i,j,k-1) - gz(i,j,k))*ga                
-425   continue
- 
-! poles:
-      sum1 = fy(IM,j1  ,k) ! fy at last lon, southernmost lat, level k
-      sum2 = fy(IM,J2+1,k) ! fy at last lon, northernmost lat, level k
+        do j=j1,j2 ! Between the caps
+            do i=1,IM ! For all lons
+                daero(i,j,k) = daero(i,j,k) +  fx(i,j,k) - fx(i+1,j,k)             &
+                                        + (fy(i,j,k) - fy(i,j+1,k))*acosp(j)/dlat(j) &
+                                        +  fz(i,j,k) - fz(i,j,k+1)                   &
+                                        + (gz(i,j,k-1) - gz(i,j,k))*ga                
+            enddo
+        enddo
+    
+    ! poles:
+        sum1 = fy(IM,j1  ,k) ! fy at last lon, southernmost lat, level k
+        sum2 = fy(IM,J2+1,k) ! fy at last lon, northernmost lat, level k
 
-      do i=1,IM-1 ! For all other lons
-      sum1 = sum1 + fy(i,j1  ,k) ! Add fy for last lon at southernmost lat
-      sum2 = sum2 + fy(i,J2+1,k) ! Add fy for last lon at northernmost lat
+        do i=1,IM-1 ! For all other lons
+            sum1 = sum1 + fy(i,j1  ,k) ! Add fy for last lon at southernmost lat
+            sum2 = sum2 + fy(i,J2+1,k) ! Add fy for last lon at northernmost lat
+        enddo
+    
+        daero(1, 1,k) = daero(1, 1,k) - sum1*RCAP + fz(1, 1,k) - fz(1, 1,k+1) ! First lon, southernmost lat
+        daero(1,JM,k) = daero(1,JM,k) + sum2*RCAP + fz(1,JM,k) - fz(1,JM,k+1) ! First lon, northernmost lat
+    
+        do i=2,IM ! All other lons except first
+            daero(i, 1,k) = daero(1, 1,k) ! At southernmost lat, daero is equal to daero at first lon
+            daero(i,JM,k) = daero(1,JM,k) ! At northernmost lat, daero is equal to daero at first lon
+        enddo
+
       enddo
- 
-      daero(1, 1,k) = daero(1, 1,k) - sum1*RCAP + fz(1, 1,k) - fz(1, 1,k+1) ! First lon, southernmost lat
-      daero(1,JM,k) = daero(1,JM,k) + sum2*RCAP + fz(1,JM,k) - fz(1,JM,k+1) ! First lon, northernmost lat
- 
-      do i=2,IM ! All other lons except first
-      daero(i, 1,k) = daero(1, 1,k) ! At southernmost lat, daero is equal to daero at first lon
-      daero(i,JM,k) = daero(1,JM,k) ! At northernmost lat, daero is equal to daero at first lon
-      enddo
-
-101   continue
 
 ! Now for k=nl, only add the flux coming from the level above
       do j=j1,j2 
@@ -817,16 +828,16 @@
       sum2 = fy(IM,J2+1,nl) ! fy at last lon, northernmost lat, level k
 
       do i=1,IM-1 ! For all other lons
-      sum1 = sum1 + fy(i,j1  ,nl) ! Add fy for last lon at southernmost lat
-      sum2 = sum2 + fy(i,J2+1,nl) ! Add fy for last lon at northernmost lat
+        sum1 = sum1 + fy(i,j1  ,nl) ! Add fy for last lon at southernmost lat
+        sum2 = sum2 + fy(i,J2+1,nl) ! Add fy for last lon at northernmost lat
       enddo
  
       daero(1, 1,nl) = daero(1, 1,nl) - sum1*RCAP + fz(1, 1,nl) - fz(1, 1,nl+1) ! First lon, southernmost lat
       daero(1,JM,nl) = daero(1,JM,nl) + sum2*RCAP + fz(1,JM,nl) - fz(1,JM,nl+1) ! First lon, northernmost lat
  
       do i=2,IM ! All other lons except first
-      daero(i, 1,nl) = daero(1, 1,nl) ! At southernmost lat, daero is equal to daero at first lon
-      daero(i,JM,nl) = daero(1,JM,nl) ! At northernmost lat, daero is equal to daero at first lon
+        daero(i, 1,nl) = daero(1, 1,nl) ! At southernmost lat, daero is equal to daero at first lon
+        daero(i,JM,nl) = daero(1,JM,nl) ! At northernmost lat, daero is equal to daero at first lon
       enddo							
 
  
@@ -860,7 +871,7 @@
       
       call mmr2n(mmr(:,:,:,ic),apart,rhop,rhog,im,jm,nl,numrhos(:,:,:,ic))
 
-5000  continue !tracer loop
+      enddo !tracer loop
 
       if (debug) then
          write(nud,*) '* Leaving routine aerocore'

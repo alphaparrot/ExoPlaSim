@@ -414,7 +414,7 @@
 
       if (nproc .ne. NPRO .and. mypid == NROOT) then
          write(nud,*)'Compiled for ',NPRO,' nodes'
-         write(nud,*)'Running on ',nproc,' nodes'
+         write(nud,*)'Running on ',nproc,' nodes'   
          call mpi_abort(myworld,mpinfo,mpinfo)
       endif
 
@@ -562,10 +562,10 @@
 
 
 !     ===================
-!     SUBROUTINE MPI_INFO
+!     SUBROUTINE OMPI_INFO
 !     ===================
 
-      subroutine mpi_info(nprocess,npid)    ! get nproc and pid
+      subroutine ompi_info(nprocess,npid)    ! get nproc and pid
       use mpimod
 
       myworld=MPI_COMM_WORLD
@@ -574,7 +574,7 @@
       call mpi_comm_rank(myworld,npid,mpinfo)
 
       return
-      end subroutine mpi_info
+      end subroutine ompi_info
 
 
 !     ==================

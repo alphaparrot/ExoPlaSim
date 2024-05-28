@@ -302,18 +302,18 @@
       end
 
 
-      subroutine mpi_info(nprocess,pid)    ! get nproc and pid
+      subroutine ompi_info(nprocess,pid)    ! get nproc and pid
       integer nprocess, pid
       nprocess = 1
       pid = 0
       return
-      end subroutine mpi_info
+      end subroutine ompi_info
 
 
       subroutine mpgetsp(yn,p,kdim,klev)
       character (len=*) :: yn
       real :: p(kdim,klev)
-      call get_restart_array(yn,p,kdim,kdim,klev)
+      call get_restart_array(yn,p,kdim,kdim,klev)   
       return
       end subroutine mpgetsp
 
