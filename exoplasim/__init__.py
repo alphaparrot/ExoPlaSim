@@ -97,6 +97,24 @@ def sysconfigure():
             print("./configure -v 3")
             os.system("./configure.sh -v 3")
             result=""
+            
+        import numpy.f2py
+        with open("pyfft.f90","r") as pyfft_file:
+            pyfft_source = pyfft_file.read()
+        failed = numpy.f2py.compile(pyfft_source,modulename='pyfft',
+                                    extra_args='--f90exec=gfortran --f77exec=gfortran --f90flags="-O3"',
+                                    extension='.f90')
+        if failed!=0:
+            raise Exception("Encountered an error in pyfft compilation with f2py.... please ensure gfortran is installed and configured correctly.")
+        
+        with open("pyfft991.f90","r") as pyfft991_file:
+            pyfft991_source = pyfft991_file.read()
+        failed = numpy.f2py.compile(pyfft991_source,modulename='pyfft991',
+                                    extra_args='--f90exec=gfortran --f77exec=gfortran --f90flags="-O3"',
+                                    extension='.f90')
+        if failed!=0:
+            raise Exception("Encountered an error in pyfft991 compilation with f2py.... please ensure gfortran is installed and configured correctly.")
+            
         #if self.burn7:
             #os.system("nc-config --version > ncversion.tmp")
             #with open("ncversion.tmp","r") as ncftmpf:
@@ -319,49 +337,52 @@ class Model(object):
             #sourcecode[2] = 'sourcedir = "%s"'%sourcedir
             #sourcecode = '\n'.join(sourcecode)
             #os.system("cp %s/__init__.py %s/preinit.py"%(sourcedir,sourcedir))
-            try:
-                #with open("%s/__init__.py"%sourcedir,"w") as sourcef:
-                    #sourcef.write(sourcecode)
-                cwd = os.getcwd()
-                os.chdir(sourcedir)
-                os.system("touch firstrun")
-                pyversion = ".".join(sys.version.split(".")[:2])
-                for pyfftfile in glob.glob(os.path.join(sourcedir,"pyfft*.so")):
-                    os.remove(pyfftfile)
-                if float(pyversion)>=3.5 and float(pyversion)<3.7:
-                    print("./configure.sh -v %s"%(pyversion))
-                    subprocess.run(["./configure.sh -v %s"%(pyversion)],shell=True,check=True)
-                elif float(pyversion)>=3.7:
-                    print("./configure.sh -v %s"%(pyversion))
-                    subprocess.run(["./configure.sh -v %s"%(pyversion)],shell=True,check=True,
-                                   capture_output=True)
-                elif float(pyversion)<3.5 and float(pyversion)>=3.0:
-                    print("./configure.sh -v %s"%(pyversion))
-                    os.system("./configure.sh -v %s"%(pyversion))
-                else:
-                    print("./configure.sh -v 3")
-                    os.system("./configure.sh -v 3")
-                #if self.burn7:
-                    #os.system("nc-config --version > ncversion.tmp")
-                    #with open("ncversion.tmp","r") as ncftmpf:
-                        #version = float('.'.join(ncftmpf.read().split()[1].split('.')[:2]))
-                    #if version>4.2:
-                        #os.system("cd postprocessor && ./build_init.sh || ./build_init_compatibility.sh")
-                    #else:
-                        #os.system("cd postprocessor && rm burn7.x && make")
-                    #os.chdir(cwd)
-                    #os.system("touch %s/postprocessor/netcdfbuilt"%sourcedir)
-                os.chdir(cwd)
-            except PermissionError:
-                raise PermissionError("\nHi! Welcome to ExoPlaSim. It looks like this is the first "+
-                                    "time you're using this program since installing, and you "+
-                                    "may have installed it to a location that needs root "+
-                                    "privileges to modify. This is not ideal! If you want to "+
-                                    "use the program this way, you will need to run python code"+
-                                    " that uses ExoPlaSim with sudo privileges; i.e. sudo "+
-                                    "python3 myscript.py. If you did this because pip install "+
-                                    "breaks without sudo privileges, then try using \n\n\tpip "+ "install --user exoplasim \n\ninstead. It is generally a "+
-                                    "very bad idea to install things with sudo pip install.")
+            #try:
+                ##with open("%s/__init__.py"%sourcedir,"w") as sourcef:
+                    ##sourcef.write(sourcecode)
+                #cwd = os.getcwd()
+                #os.chdir(sourcedir)
+                #os.system("touch firstrun")
+                #pyversion = ".".join(sys.version.split(".")[:2])
+                #for pyfftfile in glob.glob(os.path.join(sourcedir,"pyfft*.so")):
+                    #os.remove(pyfftfile)
+                #if float(pyversion)>=3.5 and float(pyversion)<3.7:
+                    #print("./configure.sh -v %s"%(pyversion))
+                    #subprocess.run(["./configure.sh -v %s"%(pyversion)],shell=True,check=True)
+                #elif float(pyversion)>=3.7:
+                    #print("./configure.sh -v %s"%(pyversion))
+                    #subprocess.run(["./configure.sh -v %s"%(pyversion)],shell=True,check=True,
+                                   #capture_output=True)
+                #elif float(pyversion)<3.5 and float(pyversion)>=3.0:
+                    #print("./configure.sh -v %s"%(pyversion))
+                    #os.system("./configure.sh -v %s"%(pyversion))
+                #else:
+                    #print("./configure.sh -v 3")
+                    #os.system("./configure.sh -v 3")
+                ##if self.burn7:
+                    ##os.system("nc-config --version > ncversion.tmp")
+                    ##with open("ncversion.tmp","r") as ncftmpf:
+                        ##version = float('.'.join(ncftmpf.read().split()[1].split('.')[:2]))
+                    ##if version>4.2:
+                        ##os.system("cd postprocessor && ./build_init.sh || ./build_init_compatibility.sh")
+                    ##else:
+                        ##os.system("cd postprocessor && rm burn7.x && make")
+                    ##os.chdir(cwd)
+                    ##os.system("touch %s/postprocessor/netcdfbuilt"%sourcedir)
+                #os.chdir(cwd)
+            #except PermissionError:
+                #raise PermissionError("\nHi! Welcome to ExoPlaSim. It looks like this is the first "+
+                                    #"time you're using this program since installing, and you "+
+                                    #"may have installed it to a location that needs root "+
+                                    #"privileges to modify. This is not ideal! If you want to "+
+                                    #"use the program this way, you will need to run python code"+
+                                    #" that uses ExoPlaSim with sudo privileges; i.e. sudo "+
+                                    #"python3 myscript.py. If you did this because pip install "+
+                                    #"breaks without sudo privileges, then try using \n\n\tpip "+ "install --user exoplasim \n\ninstead. It is generally a "+
+                                    #"very bad idea to install things with sudo pip install.")
+                                    
+            sysconfigure()
+            
         #if self.burn7:
             #self.extension = ".nc"
             #if not os.path.isfile("%s/postprocessor/netcdfbuilt"%sourcedir): #netcdf postprocessor hasn't been built
