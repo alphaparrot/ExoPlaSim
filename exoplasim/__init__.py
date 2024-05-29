@@ -60,6 +60,58 @@ def _noneparse(text,dtype):
             #sourcedir=spth.strip()
             
     #return sourcedir
+                
+def compile_pyfft():
+    '''Compile or recompile the pyfft libraries. Requires meson, ninja, gfortran, and gcc.'''
+    
+    sourcedir = "/".join(__file__.split("/")[:-1]) #Get the absolute path for the module
+    print(sourcedir)
+     
+    try:
+        cwd = os.getcwd()
+        os.chdir(sourcedir)
+        import numpy.f2py
+        with open("pyfft.f90","r") as pyfft_file:
+            pyfft_source = pyfft_file.read()
+        failed = numpy.f2py.compile(pyfft_source,modulename='pyfft',
+                                    extra_args='--f90exec=gfortran --f77exec=gfortran --f90flags="-O3"',
+                                    extension='.f90')
+        if failed!=0:
+            print(failed)
+            #raise Exception("Encountered an error in pyfft compilation with f2py.... please ensure gfortran is installed and configured correctly.")
+        
+        with open("pyfft991.f90","r") as pyfft991_file:
+            pyfft991_source = pyfft991_file.read()
+        failed = numpy.f2py.compile(pyfft991_source,modulename='pyfft991',
+                                    extra_args='--f90exec=gfortran --f77exec=gfortran --f90flags="-O3"',
+                                    extension='.f90')
+        if failed!=0:
+            print(failed)
+            #raise Exception("Encountered an error in pyfft991 compilation with f2py.... please ensure gfortran is installed and configured correctly.")
+            
+        #if self.burn7:
+            #os.system("nc-config --version > ncversion.tmp")
+            #with open("ncversion.tmp","r") as ncftmpf:
+                #version = float('.'.join(ncftmpf.read().split()[1].split('.')[:2]))
+            #if version>4.2:
+                #os.system("cd postprocessor && ./build_init.sh || ./build_init_compatibility.sh")
+            #else:
+                #os.system("cd postprocessor && rm burn7.x && make")
+            #os.chdir(cwd)
+            #os.system("touch %s/postprocessor/netcdfbuilt"%sourcedir)
+        os.chdir(cwd)
+    except PermissionError:
+        raise PermissionError("\nHi! Welcome to ExoPlaSim. It looks like this is the first "+
+                            "time you're using this program since installing, and you "+
+                            "may have installed it to a location that needs root "+
+                            "privileges to modify. This is not ideal! If you want to "+
+                            "use the program this way, you will need to run python code"+
+                            " that uses ExoPlaSim with sudo privileges; i.e. sudo "+
+                            "python3 myscript.py. If you did this because pip install "+
+                            "breaks without sudo privileges, then try using \n\n\tpip "+ "install --user exoplasim \n\ninstead. It is generally a "+
+                                "very bad idea to install things with sudo pip install.")
+    except Exception as e:
+        raise e
     
 def sysconfigure():
     '''Rerun the ExoPlaSim system configuration script.
@@ -74,8 +126,8 @@ def sysconfigure():
         cwd = os.getcwd()
         os.chdir(sourcedir)
         pyversion = ".".join(sys.version.split(".")[:2])
-        for pyfftfile in glob.glob(os.path.join(sourcedir,"pyfft*.so")):
-            os.remove(pyfftfile)
+        #for pyfftfile in glob.glob(os.path.join(sourcedir,"pyfft*.so")):
+            #os.remove(pyfftfile)
         if float(pyversion)>=3.5 and float(pyversion)<3.7:
             print("./configure -v %s"%(pyversion))
             result = subprocess.run(["./configure.sh -v %s"%(pyversion)],shell=True,check=True,
@@ -98,22 +150,24 @@ def sysconfigure():
             os.system("./configure.sh -v 3")
             result=""
             
-        import numpy.f2py
-        with open("pyfft.f90","r") as pyfft_file:
-            pyfft_source = pyfft_file.read()
-        failed = numpy.f2py.compile(pyfft_source,modulename='pyfft',
-                                    extra_args='--f90exec=gfortran --f77exec=gfortran --f90flags="-O3"',
-                                    extension='.f90')
-        if failed!=0:
-            raise Exception("Encountered an error in pyfft compilation with f2py.... please ensure gfortran is installed and configured correctly.")
+        #import numpy.f2py
+        #with open("pyfft.f90","r") as pyfft_file:
+            #pyfft_source = pyfft_file.read()
+        #failed = numpy.f2py.compile(pyfft_source,modulename='pyfft',
+                                    #extra_args='--f90exec=gfortran --f77exec=gfortran --f90flags="-O3"',
+                                    #extension='.f90')
+        #if failed!=0:
+            #print(failed)
+            ##raise Exception("Encountered an error in pyfft compilation with f2py.... please ensure gfortran is installed and configured correctly.")
         
-        with open("pyfft991.f90","r") as pyfft991_file:
-            pyfft991_source = pyfft991_file.read()
-        failed = numpy.f2py.compile(pyfft991_source,modulename='pyfft991',
-                                    extra_args='--f90exec=gfortran --f77exec=gfortran --f90flags="-O3"',
-                                    extension='.f90')
-        if failed!=0:
-            raise Exception("Encountered an error in pyfft991 compilation with f2py.... please ensure gfortran is installed and configured correctly.")
+        #with open("pyfft991.f90","r") as pyfft991_file:
+            #pyfft991_source = pyfft991_file.read()
+        #failed = numpy.f2py.compile(pyfft991_source,modulename='pyfft991',
+                                    #extra_args='--f90exec=gfortran --f77exec=gfortran --f90flags="-O3"',
+                                    #extension='.f90')
+        #if failed!=0:
+            #print(failed)
+            #raise Exception("Encountered an error in pyfft991 compilation with f2py.... please ensure gfortran is installed and configured correctly.")
             
         #if self.burn7:
             #os.system("nc-config --version > ncversion.tmp")
@@ -242,6 +296,10 @@ class Model(object):
     outputfaulttolerant : bool, optional
         If True, then if the postprocessing step fails, ExoPlaSim will print an error, but continue
         on to the next model year.
+    hyperthreading : bool, optional
+        If True, uses the --use-hwthread-cpus flag when calling the mpi executable
+    mpi_opts : str, optional
+        String of any additional keywords/flags that should be passed to mpiexec/mpirun
         
     Returns
     -------
@@ -283,7 +341,8 @@ class Model(object):
     """
     def __init__(self,resolution="T21",layers=10,ncpus=4,precision=4,debug=False,inityear=0,
                 recompile=False,optimization=None,mars=False,workdir="most",source=None,force991=False,
-                modelname="MOST_EXP",outputtype=".npz",crashtolerant=False,outputfaulttolerant=False):
+                modelname="MOST_EXP",outputtype=".npz",crashtolerant=False,outputfaulttolerant=False,
+                hyperthreading=True,mpi_opts=None):
         
         global sourcedir
         
@@ -423,6 +482,10 @@ class Model(object):
         self.ncpus = ncpus
         if self.ncpus>1:
             self._exec = "mpiexec -np %d "%self.ncpus
+            if mpi_opts is not None:
+                self._exec += mpi_opts+" "
+            if hyperthreading and "--use-hwthread-cpus" not in self._exec:
+                self._exec += "--use-hwthread-cpus "
         else:
             self._exec = "./"
         self.layers = layers
