@@ -176,18 +176,18 @@ Sometimes it can be helpful to examine 3D data in a plane other than latitude-lo
 >>> import exoplasim.gcmt as gcmt
 >>> wa = toi700d.inspect("wa")
 >>> ua = toi700d.inspect("ua")
->>> wa = gcmt.make2d(wa,lat="mean")
->>> ua = gcmt.make2d(ua,lon="mean")
+>>> wa = gcmt.make2d(wa,lat="mean",latitudes=lat)
+>>> ua = gcmt.make2d(ua,lon="mean",longitudes=lon)
 
-The :py:func:`make2d <exoplasim.gcmt.make2d>` function attempts to reduce an input variable to 2 dimensions. If you specify that a particular dimension (\ ``lat``, ``lon``, ``lev``) should be averaged (\ ``"mean"``) or summed (\ ``"sum"``), the function will first attempt to reduce along that dimension. If not enough dimensions are specified, or a time slice is not given, the default is to return a time-average. Note that when an average or sum is computed, the different sizes of grid cells **is** taken into account.
+The :py:func:`make2d <exoplasim.gcmt.make2d>` function attempts to reduce an input variable to 2 dimensions. If you specify that a particular dimension (\ ``lat``, ``lon``, ``lev``) should be averaged (\ ``"mean"``) or summed (\ ``"sum"``), the function will first attempt to reduce along that dimension. If not enough dimensions are specified, or a time slice is not given, the default is to return a time-average. Note that when an average or sum is computed, the different sizes of grid cells **is** taken into account. This is why you must provide either the latitude or longitude array when doing spatial averaging or summation. 
 
 For the vertical axis, it may be useful to have pressure levels.
 
 >>> sigma = toi700d.inspect("lev")
 >>> psurf = toi700d.inspect("ps")
 >>> pAir = sigma[np.newaxis,:,np.newaxis,np.newaxis] * psurf[:,np.newaxis,:,:]
->>> pmerid = gcmt.make2d(pAir,lat="mean")
->>> pzonal = gcmt.make2d(pAir,lon="mean")
+>>> pmerid = gcmt.make2d(pAir,lat="mean",latitudes=lat)
+>>> pzonal = gcmt.make2d(pAir,lon="mean",longitudes=lon)
 
 We now have a 2D array of mid-layer pressures for each of our plots, in units of hPa.
 
