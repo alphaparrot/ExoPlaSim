@@ -25,5 +25,5 @@
  NSPVFILTER = 1
  PSURF = 100040 
  SYNCSTR     =     0
- L_AERO       =     1
+ L_AERO       =     0
  /END
