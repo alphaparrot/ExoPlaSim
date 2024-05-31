@@ -401,7 +401,6 @@ class Model(object):
                     ##sourcef.write(sourcecode)
                 #cwd = os.getcwd()
                 #os.chdir(sourcedir)
-                #os.system("touch firstrun")
                 #pyversion = ".".join(sys.version.split(".")[:2])
                 #for pyfftfile in glob.glob(os.path.join(sourcedir,"pyfft*.so")):
                     #os.remove(pyfftfile)
@@ -441,6 +440,7 @@ class Model(object):
                                     #"very bad idea to install things with sudo pip install.")
                                     
             sysconfigure()
+            os.system(f"touch {sourcedir}/firstrun")
             
         #if self.burn7:
             #self.extension = ".nc"
@@ -1992,7 +1992,7 @@ class Model(object):
             year=None,glaciers={"toggle":False,"mindepth":2.0,"initialh":-1.0},
             restartfile=None,gravity=None,radius=None,eccentricity=None,
             obliquity=None,lonvernaleq=None,fixedorbit=False,orography=None,
-            seaice=True,co2weathering=False,evolveco2=False,physicsfilter="gp|exp|sp",
+            seaice=True,co2weathering=False,evolveco2=False,physicsfilter="",
             filterkappa=8.0,filterpower=8,filterLHN0=15.0,diffusionwaven=None,
             qdiffusion=None,tdiffusion=None,zdiffusion=None,ddiffusion=None,
             diffusionpower=None,erosionsupplylimit=None,outgassing=50.0,snowicealbedo=None,
