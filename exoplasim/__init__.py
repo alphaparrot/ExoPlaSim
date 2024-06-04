@@ -510,12 +510,14 @@ class Model(object):
         elif resolution=="T63" or resolution=="t63" or resolution==63 or resolution==96:
             self.nsp=63
             self.nlats=96
+            force991 = True
         elif resolution=="T85" or resolution=="t85" or resolution==85 or resolution==128:
             self.nsp=85
             self.nlats=128
         elif resolution=="T106" or resolution=="T106" or resolution==106 or resolution==160:
             self.nsp=106
             self.nlats=160
+            force991 = True
         elif resolution=="T127" or resolution=="t127" or resolution==127 or resolution==192:
             self.nsp=127
             self.nlats=192
