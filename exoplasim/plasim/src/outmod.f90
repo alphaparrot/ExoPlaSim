@@ -699,6 +699,7 @@
       
         aadalb(:) = aadalb(:)/real(naccuout)
         aadsalb1(:) = aadsalb1(:)/real(naccuout)
+        aadsalb2(:) = aadsalb2(:)/real(naccuout)
         call writegp(40,aadalb,175,0)
         call writegp(40,aadsalb1,174,0)
         call writegp(40,aadsalb2,184,0)

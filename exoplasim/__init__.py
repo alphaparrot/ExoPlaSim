@@ -2146,7 +2146,9 @@ class Model(object):
             soilalbedo : float, optional
                A uniform albedo to use for all land.
             wetsoil : bool, optional
-               True/False. If True, land albedo depends on soil moisture (wet=darker).
+               True/False. If True, land albedo depends on soil moisture (wet=darker). Note this cannot
+               be used in conjunction with a defined stellar temperature; this is strictly a broadband 
+               feature. This is also a toy model of soil darkness; do not rely on it for scientific rigor.
             oceanalbedo : float, optional
                A uniform albedo to use for the ocean.
             oceanzenith : {"ECHAM-3","ECHAM-6","Lambertian}, optional
@@ -2819,8 +2821,14 @@ References
             self._edit_namelist("radmod_namelist","NECHAM6","1")
         self.oceanzenith=oceanzenith
         
-        self._edit_namelist("landmod_namelist","NWETSOIL",str(wetsoil*1))
-        self.wetsoil=wetsoil
+        if startemp is None:
+            self._edit_namelist("landmod_namelist","NWETSOIL",str(wetsoil*1))
+            self.wetsoil=wetsoil
+        else:
+            self._edit_namelist("landmod_namelist","NWETSOIL",'0')
+            self.wetsoil=False
+            if wetsoil:
+                print("Warning: wetsoil=True cannot be used with two-band albedos. Since you have a stellar temperature set, wetsoil is being set to False.")
         if soilwatercap:
             self._edit_namelist("landmod_namelist","WSMAX",str(soilwatercap))
             os.system("rm %s/*0229.sra"%self.workdir)
@@ -3005,7 +3013,10 @@ References
         soilalbedo = _noneparse(cfg[38],float)
         oceanalbedo = _noneparse(cfg[39],float)
         oceanzenith = cfg[40]
-        wetsoil = bool(int(cfg[41]))
+        if startemp is None:
+            wetsoil = bool(int(cfg[41]))
+        else:
+            wetsoil = False
         soilwatercap = _noneparse(cfg[42],float)
         aquaplanet = bool(int(cfg[43]))
         desertplanet = bool(int(cfg[44]))
@@ -3585,8 +3596,14 @@ References
                     self._edit_namelist("radmod_namelist","NECHAM6","1")
                 
             if key=="wetsoil":
-                self.wetsoil=value
-                self._edit_namelist("landmod_namelist","NWETSOIL",str(self.wetsoil*1))
+                if "startemp" in kwargs and kwargs["startemp"] is not None:
+                    self.wetsoil=False
+                    self._edit_namelist("landmod_namelist","NWETSOIL",'0')
+                    if value:
+                        print("Warning: wetsoil=True cannot be used in conjunction with startemp. Setting wetsoil=False.")
+                else:
+                    self.wetsoil=value
+                    self._edit_namelist("landmod_namelist","NWETSOIL",str(self.wetsoil*1))
             if key=="soilwatercap":
                 self.soilwatercap=value
                 if self.soilwatercap:
