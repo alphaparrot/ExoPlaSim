@@ -348,7 +348,7 @@ plasimversion = "https://github.com/Edilbert/PLASIM/ : 15-Dec-2015"
       
       call mpbci(nfilter)
       call mpbci(ngptfilter)
-      call mpbci(npsvfilter)
+      call mpbci(nspvfilter)
       call mpbcr(landhoskn0)
       call mpbci(nfilterexp)
       call mpbcr(filterkappa)

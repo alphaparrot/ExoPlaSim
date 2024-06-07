@@ -32,6 +32,7 @@
       real    :: albsmaxf = 0.4   ! max. albedo for snow (with forest)
       real    :: albgmin  = 0.6   ! min. albedo for glaciers
       real    :: albgmax  = 0.8   ! max. albedo for glaciers
+      real    :: alblandmax = 0.40  ! max land albedo; i.e. desert sand
                    ! lambda < 0.75 microns
       real    :: albsmin1  = 0.4   ! min. albedo for snow
       real    :: albsmax1  = 0.8   ! max. albedo for snow
@@ -232,6 +233,7 @@
       call mpbci(nlandt)
       call mpbci(nlandw)
       call mpbci(newsurf)
+      call mpbci(nwetsoil)
       call mpbci(nwatcini)
       call mpbcr(albland)
       
@@ -1520,9 +1522,11 @@
               al = 1.0/aa*(max(bf,1.0e-3)**((1.0-yy)/yy) - 1)**(1.0/yy)
               dalbclim(jhor) = alblandmax * exp(-(bf*25)**6)+ &
 &                              al * (1 - exp(-(bf*25)**6) - exp(-((1-bf)*30)**9))+ &
-&                              alblandmin * exp(-((1-bf)*30)**9)
+&                              doceanalb(1) * exp(-((1-bf)*30)**9)
               dalbclim1(jhor) = dalbclim(jhor)
-              dalbclim2(jhor) = dalbclim(jhor)
+              dalbclim2(jhor) = alblandmax * exp(-(bf*25)**6)+ &
+&                              al * (1 - exp(-(bf*25)**6) - exp(-((1-bf)*30)**9))+ &
+&                              doceanalb(2) * exp(-((1-bf)*30)**9)
             else !Frozen soil.
               dalbclim(jhor) = albland
               dalbclim1(jhor) = dgroundalb(1)
