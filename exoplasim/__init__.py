@@ -2972,11 +2972,12 @@ References
         startemp=_noneparse(cfg[2],float)
         starspec=_noneparse(cfg[3],str)
         gases = cfg[4].split("&")
-        for gas in gases:
-            species = gas.split("|")
-            amt = float(species[1])
-            species = species[0]
-            self.pgases[species] = amt
+        if len(gases)>0:
+            for gas in gases:
+                species = gas.split("|")
+                amt = float(species[1])
+                species = species[0]
+                self.pgases[species] = amt
         gascon = float(cfg[5])
         pressure = _noneparse(cfg[6],float)
         pressurebroaden = bool(int(cfg[7]))
