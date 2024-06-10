@@ -1,0 +1,82 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "exoplasim"
+version="3.4.0"
+dependencies = ["ninja",
+    "meson",
+    "scipy",
+    "numpy>=1.16"
+    ]
+authors = [
+ {name = "Adiv Paradise", email = "paradise.astro@gmail.com"},
+ {name = "Maureen J. Cohen"},
+ {name = "Edilbert Kirk"},{name="Harmut Borth"},{name="Frank Lunkeit"}
+]
+maintainers = [ 
+{name="Adiv Paradise", email="paradise.astro@gmail.com"}
+]
+
+description = "Exoplanet GCM"
+readme = "README.rst"
+keywords = ["space","science","astronomy","exoplanet","simulation","climate","weather","GCM"]
+requires-python = ">=3.7"
+    
+classifiers = [
+  "License :: OSI Approved :: GNU General Public License v2 (GPLv2)",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12"
+  ]  
+  
+[projection.optional-dependencies]
+h5 = ['h5py',]
+nc = ['netCDF4',]
+mpl = ['matplotlib','basemap']
+pRT = ['petitRADTRANS>=2.4']
+  
+[project.urls]
+Documentation = "https://exoplasim.readthedocs.io"
+Repository = "https://github.com/alphaparrot/ExoPlaSim.git"
+Issues = "https://github.com/alphaparrot/ExoPlaSim/issues"
+  
+[tool.hatch.build.targets.wheel]
+packages = ['/exoplasim',]
+exclude = ['exoplasim/cat*',
+                  'exoplasim/Cat_UG_00',
+                  'exoplasim/glacier',
+                  'exoplasim/images',
+                  'exoplasim/octave',
+                  'exoplasim/Plasim_Report',
+                  'exoplasim/Plasim_RM_16', 
+                  'exoplasim/Plasim_UG_16',
+                  'exoplasim/puma',
+                  'exoplasim/Puma_UG_17',
+                  'exoplasim/ug_cat_00',
+                  'exoplasim/sam',
+                  'exoplasim/lsg',
+                  'exoplasim/tools',
+                  'exoplasim/plasim/run/*.sra']
+
+[tool.hatch.build.targets.sdist]
+packages = ['/exoplasim',]
+exclude = ['exoplasim/cat*',
+                  'exoplasim/Cat_UG_00',
+                  'exoplasim/glacier',
+                  'exoplasim/images',
+                  'exoplasim/octave',
+                  'exoplasim/Plasim_Report',
+                  'exoplasim/Plasim_RM_16', 
+                  'exoplasim/Plasim_UG_16',
+                  'exoplasim/puma',
+                  'exoplasim/Puma_UG_17',
+                  'exoplasim/ug_cat_00',
+                  'exoplasim/sam',
+                  'exoplasim/lsg',
+                  'exoplasim/tools',
+                  'exoplasim/plasim/run/*.sra']

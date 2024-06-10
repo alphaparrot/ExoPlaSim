@@ -2972,7 +2972,7 @@ References
         startemp=_noneparse(cfg[2],float)
         starspec=_noneparse(cfg[3],str)
         gases = cfg[4].split("&")
-        if len(gases)>0:
+        if len(gases.strip())>0:
             for gas in gases:
                 species = gas.split("|")
                 amt = float(species[1])
