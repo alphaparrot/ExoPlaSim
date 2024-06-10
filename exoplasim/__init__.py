@@ -70,6 +70,14 @@ def compile_pyfft():
     try:
         cwd = os.getcwd()
         os.chdir(sourcedir)
+        
+        if not os.path.isfile(sourcedir+"/most_compiler")\
+            or not os.path.isfile(sourcedir+"/most_compiler_mpi")\
+            or not os.path.isfile(sourcedir+"/firstrun"):
+            os.system(f"touch {sourcedir}/firstrun")
+            sysconfigure()
+        
+        
         import numpy.f2py
         with open("pyfft.f90","r") as pyfft_file:
             pyfft_source = pyfft_file.read()
@@ -99,6 +107,7 @@ def compile_pyfft():
                 #os.system("cd postprocessor && rm burn7.x && make")
             #os.chdir(cwd)
             #os.system("touch %s/postprocessor/netcdfbuilt"%sourcedir)
+            
         os.chdir(cwd)
     except PermissionError:
         raise PermissionError("\nHi! Welcome to ExoPlaSim. It looks like this is the first "+
@@ -149,6 +158,10 @@ def sysconfigure():
             print("./configure -v 3")
             os.system("./configure.sh -v 3")
             result=""
+            
+        if not os.path.isfile(sourcedir+"/firstrun") :
+            os.system(f"touch {sourcedir}/firstrun")
+            compile_pyfft()
             
         #import numpy.f2py
         #with open("pyfft.f90","r") as pyfft_file:
@@ -440,7 +453,7 @@ class Model(object):
                                     #"very bad idea to install things with sudo pip install.")
                                     
             sysconfigure()
-            compile_pyfft()
+            #compile_pyfft() #This will be called from sysconfigure()
             os.system(f"touch {sourcedir}/firstrun")
             
         #if self.burn7:
