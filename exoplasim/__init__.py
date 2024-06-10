@@ -440,6 +440,7 @@ class Model(object):
                                     #"very bad idea to install things with sudo pip install.")
                                     
             sysconfigure()
+            compile_pyfft()
             os.system(f"touch {sourcedir}/firstrun")
             
         #if self.burn7:
