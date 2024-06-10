@@ -45,16 +45,12 @@ Copyright 2020, Distributed under the `General Public License`__.
 
 __ GPL_
 
-This API was written with Python 3 in mind, but should work with
-Python 2 and outdated versions of NumPy. 
-
 Requirements
 ------------
 
-* Python (including development libraries, e.g. python-dev or python3.9-dev on Ubuntu--if using anaconda, these should already be included in your installation)
+* Python 3.8+ (including development libraries, e.g. python-dev or python3.9-dev on Ubuntu--if using anaconda, these should already be included in your installation)
 * numpy
 * scipy (only needed for additional utilities, postprocessor)
-* matplotlib (only needed for additional utilities)
 * GNU C (gcc/g++) and Fortran (gfortran) compilers (development headers must be present)
 * (optionally) Other compilers whose use you prefer for the model itself
 * (optionally) MPI libraries for those compilers
