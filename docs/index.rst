@@ -72,7 +72,7 @@ Optional Requirements
 
 * netCDF4 (for netCDF support)
 * h5py (for HDF5 support)
-* matplotlib (for plotting and interactivity with `makestellarspec` and `randomcontinents` modules)
+* matplotlib (for plotting and interactivity with ``makestellarspec`` and ``randomcontinents`` modules)
 
 **Future Development Roadmap:**
 ---------------
@@ -95,7 +95,7 @@ This is the final 3.x maintenance release before 4.0.0 (coming soon!).
 
 * Updated documentation
 * Several bugfixes including to core model operations such as the physics filters
-* Revamped `pyfft` compilation to eliminate thorny version dependencies--installation and compilation should be a **lot** smoother now.
+* Revamped ``pyfft`` compilation to eliminate thorny version dependencies--installation and compilation should be a **lot** smoother now.
 * Modernized PlaSim source to be compliant with Fortran 2018 and MPI 4 (required for OpenMPI 5 and GCC 13)
 * Added pass-throughs to the MPI executable to allow runtime flags related to e.g. hyperthreading
 
@@ -151,13 +151,13 @@ to not use the Python API, by entering the exoplasim/ directory
 and running first configure.sh, then compile.sh (compilation flags
 are shown by running ``./compile.sh -h``). 
 
-If there is a problem with gcc or gfortran being available, `pyfft` compilation may also fail
-or need to be updated. To re-run the `pyfft` compilation, you can run :py:mod:`compile_pyfft()<exoplasim.compile_pyfft>`.
+If there is a problem with gcc or gfortran being available, ``pyfft`` compilation may also fail
+or need to be updated. To re-run the ``pyfft`` compilation, you can run :py:mod:`compile_pyfft()<exoplasim.compile_pyfft>`.
 
-Both of these routines will be called the first time a `Model` is compiled, *if* they have not
+Both of these routines will be called the first time a ``Model`` is compiled, *if* they have not
 ever been run before. You do not need to run these in order to start compiling and using the
 model. They will also call each other if they detect that compiler detection has not yet been
-completed and `pyfft` has not yet been compiled.
+completed and ``pyfft`` has not yet been compiled.
 
 A clean install with conda:
 ------------------------------------
@@ -167,7 +167,7 @@ For parallel execution, an MPI compiler is also required.
 **It is heavily recommended that you use the GNU compilers and OpenMPI.** 
 On linux that means gcc, gfortran, g++, and openmpi. On OS X it may be possible to use 
 other C and C++ compilers. Intel Fortran will work with the ExoPlaSim source, but not 
-with `pyfft` compilation through numpy, which means the postprocessor will not work 
+with ``pyfft`` compilation through numpy, which means the postprocessor will not work 
 properly with Intel Fortran. That may or may not be a dealbreaker for you.
 
 One of the easiest and safest ways to ensure you have met the compilation dependencies
@@ -175,7 +175,7 @@ is to use something like conda. While ExoPlaSim itself does not (yet) have a com
 recipe available through conda or conda-forge, there are versions of gcc, gxx, gfortran, and 
 openmpi that can be installed through conda via the `conda-forge <https://conda-forge.org/docs/user/introduction/#how-can-i-install-packages-from-conda-forge>`_ channel. 
 
-An ExoPlaSim installation (including compiler configuration and `pyfft` compilation)  in a 
+An ExoPlaSim installation (including compiler configuration and ``pyfft`` compilation)  in a 
 conda environment would therefore look like:
 
 ::
