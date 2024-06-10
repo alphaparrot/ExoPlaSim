@@ -1,7 +1,6 @@
 # docs/requirements.txt
-sphinx==3.3.1
-sphinx-rtd-theme==0.5.0
-sphinxcontrib-programoutput==0.16
-recommonmark==0.6.0
-Jinja2<3.1
-petitRADTRANS
+sphinx==5.3.0
+sphinx-rtd-theme==2.0.0
+readthedocs-sphinx-search==0.3.1
+sphinxcontrib-programoutput==0.17
+myst_parser==3.0.1
