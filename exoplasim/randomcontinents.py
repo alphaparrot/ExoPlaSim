@@ -1,9 +1,9 @@
 import numpy as np
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
+#import matplotlib.colors as colors
 from scipy import interpolate
 import os, sys
 import argparse as ag
-import matplotlib.colors as colors
 from pathlib import Path
     
 
@@ -79,7 +79,7 @@ def writePGM(name,heightfield):
         fw.write(filetext)
 
 def generate(name="Alderaan",continents=7,landfraction=0.29,maxz=10.0,nlats=32,hemispherelongitude=np.nan,
-             ntopo=False,orthographic=False):
+             ntopo=False,orthographic=False,plot=False):
     '''Randomly generate continents up to specified land fraction. Topography optional.
 
     Generates name_surf_0172.sra, the land mask file, and (if requested) 
@@ -97,13 +97,16 @@ def generate(name="Alderaan",continents=7,landfraction=0.29,maxz=10.0,nlats=32,h
     maxz : float, optional
         Maximum surface elevation under Earth gravity (non-Earth gravity will change the final elevation)
     nlats : int, optional
-        Number of latitudes. If set to False, T21 Gaussian latitudes will be used. Longitudes are 2*nlats.
+        Number of latitudes. If set to False, T21 Gaussian latitudes will be used (requires netCDF4).
+        Longitudes are 2*nlats.
     hemispherelongitude : float, optional
         If finite, confine land to a hemisphere centered on this longitude.
     topo : bool, optional
         If True, compute topography.
     orthorgraphic : bool, optional
         If True, plot orthographic projections centered on hemispherelongitude.
+    plot : bool, optional
+        If True, display plots of the continents being generated. Requires matplotlib.
 
     Returns
     ------
@@ -121,6 +124,10 @@ def generate(name="Alderaan",continents=7,landfraction=0.29,maxz=10.0,nlats=32,h
         lts = np.linspace(90,-90,num=nlats+2)[1:-1]
         lns = np.linspace(0,360,num=nlats*2+1)[:-1]
     lons, lats = np.meshgrid(lns,lts)
+    
+    if plot:
+        import matplotlib.pyplot as plt
+        import matplotlib.colors as colors
     
     minlon=0.0
     maxlon=360.0
@@ -273,7 +280,7 @@ def generate(name="Alderaan",continents=7,landfraction=0.29,maxz=10.0,nlats=32,h
     
     print(orthographic)
     
-    if not orthographic:
+    if not orthographic and plot:
         tm = plt.pcolormesh(hlons,hlats,grid,cmap='gist_earth',vmin=-0.3,vmax=2.5)
         plt.xlabel('Degrees Longitude')
         plt.ylabel('Degrees Latitude')
@@ -292,22 +299,25 @@ def generate(name="Alderaan",continents=7,landfraction=0.29,maxz=10.0,nlats=32,h
         x = np.roll(thetacoord,-shift,axis=1)[:,:int(NLON//2)+1]
         y = np.roll(rcoord,-shift,axis=1)[:,:int(NLON//2)+1]
         z = np.roll(grid,-shift,axis=1)[:,:int(NLON//2)]
-        fig,ax=plt.subplots(subplot_kw={"projection":"polar"},figsize=(9,9))
-        ax.set_theta_zero_location('N')
-        ax.pcolormesh(x,np.sin(y),z,cmap='gist_earth',vmin=-0.3,vmax=2.5)
-        ax.set_rticks([])
-        ax.set_thetagrids([])
-        plt.title("Continents")
-        plt.savefig(name+"_lsm.png",bbox_inches='tight')
-        plt.savefig(name+"_lsm.pdf",bbox_inches='tight')
-        plt.close('all')  
+        if plot:
+            fig,ax=plt.subplots(subplot_kw={"projection":"polar"},figsize=(9,9))
+            ax.set_theta_zero_location('N')
+            ax.pcolormesh(x,np.sin(y),z,cmap='gist_earth',vmin=-0.3,vmax=2.5)
+            ax.set_rticks([])
+            ax.set_thetagrids([])
+            plt.title("Continents")
+            plt.savefig(name+"_lsm.png",bbox_inches='tight')
+            plt.savefig(name+"_lsm.pdf",bbox_inches='tight')
+            plt.close('all')  
         
     
     writeSRA(name,172,grid,NLAT,NLON)
     
-    plt.close('all')
-    if not orthographic:
-        t = plt.pcolormesh(hlons,hlats,cratons[1:-1,1:-1],cmap='gist_ncar',vmin=-0.3,vmax=ncontinents+2)
+    if plot:
+        plt.close('all')
+    if not orthographic and plot:
+        t = plt.pcolormesh(hlons,hlats,cratons[1:-1,1:-1],cmap='gist_ncar',
+                                       vmin=-0.3,vmax=ncontinents+2)
         plt.xlabel('Degrees Longitude')
         plt.ylabel('Degrees Latitude')
         plt.ylim(np.amin(lts),np.amax(lts))
@@ -326,15 +336,16 @@ def generate(name="Alderaan",continents=7,landfraction=0.29,maxz=10.0,nlats=32,h
         x = np.roll(thetacoord,-shift,axis=1)[:,:int(NLON//2)+1]
         y = np.roll(rcoord,-shift,axis=1)[:,:int(NLON//2)+1]
         z = np.roll(cratons[1:-1,1:-1],-shift,axis=1)[:,:int(NLON//2)]
-        fig,ax=plt.subplots(subplot_kw={"projection":"polar"},figsize=(9,9))
-        ax.set_theta_zero_location('N')
-        ax.pcolormesh(x,np.sin(y),z,cmap='gist_ncar',vmin=-0.3,vmax=ncontinents+2)
-        ax.set_rticks([])
-        ax.set_thetagrids([])
-        plt.title("Continental Cratons")
-        plt.savefig(name+"_cratons.png",bbox_inches='tight')
-        plt.savefig(name+"_cratons.pdf",bbox_inches='tight')
-        plt.close('all')  
+        if plot:
+            fig,ax=plt.subplots(subplot_kw={"projection":"polar"},figsize=(9,9))
+            ax.set_theta_zero_location('N')
+            ax.pcolormesh(x,np.sin(y),z,cmap='gist_ncar',vmin=-0.3,vmax=ncontinents+2)
+            ax.set_rticks([])
+            ax.set_thetagrids([])
+            plt.title("Continental Cratons")
+            plt.savefig(name+"_cratons.png",bbox_inches='tight')
+            plt.savefig(name+"_cratons.pdf",bbox_inches='tight')
+            plt.close('all')  
     
     dtopo = np.zeros_like(grid)
     
@@ -352,7 +363,7 @@ def generate(name="Alderaan",continents=7,landfraction=0.29,maxz=10.0,nlats=32,h
             seams[:] = seeds[:]
         geopotential[grid==0.0] = np.nan
         
-        if not orthographic:
+        if not orthographic and plot:
             tm = plt.pcolormesh(hlons,hlats,grid+seams*3.0,cmap='plasma')
             plt.title("Craton Seams")
             plt.xlabel("Degrees Longitude")
@@ -371,16 +382,17 @@ def generate(name="Alderaan",continents=7,landfraction=0.29,maxz=10.0,nlats=32,h
             x = np.roll(thetacoord,-shift,axis=1)[:,:int(NLON//2)+1]
             y = np.roll(rcoord,-shift,axis=1)[:,:int(NLON//2)+1]
             z = np.roll(grid+seams*3.0,-shift,axis=1)[:,:int(NLON//2)]
-            fig,ax=plt.subplots(subplot_kw={"projection":"polar"},figsize=(9,9))
-            ax.set_theta_zero_location('N')
-            t=ax.pcolormesh(x,np.sin(y),z,cmap='plasma',vmin=-0.3,vmax=2.5)
-            ax.set_rticks([])
-            ax.set_thetagrids([])
-            plt.colorbar(t)
-            plt.title("Craton Seams")
-            plt.savefig(name+"_seams.png",bbox_inches='tight')
-            plt.savefig(name+"_seams.pdf",bbox_inches='tight')
-            plt.close('all')  
+            if plot:
+                fig,ax=plt.subplots(subplot_kw={"projection":"polar"},figsize=(9,9))
+                ax.set_theta_zero_location('N')
+                t=ax.pcolormesh(x,np.sin(y),z,cmap='plasma',vmin=-0.3,vmax=2.5)
+                ax.set_rticks([])
+                ax.set_thetagrids([])
+                plt.colorbar(t)
+                plt.title("Craton Seams")
+                plt.savefig(name+"_seams.png",bbox_inches='tight')
+                plt.savefig(name+"_seams.pdf",bbox_inches='tight')
+                plt.close('all')  
     
         hlnsz = np.linspace(hlns[0],hlns[-1],num=max(400,NLON*2))
         hltsz = np.linspace(hlts[0],hlts[-1],num=max(200,NLAT*2))
@@ -463,7 +475,7 @@ def generate(name="Alderaan",continents=7,landfraction=0.29,maxz=10.0,nlats=32,h
         
         writeSRA(name,129,dtopo,NLAT,NLON)
         
-        if not orthographic:
+        if not orthographic and plot:
             plt.close('all')
             t=plt.pcolormesh(hlons,hlats,dtopo,cmap='gist_earth',norm=colors.LogNorm(vmin=10.0))
             plt.xlabel('Degrees Longitude')
@@ -483,16 +495,17 @@ def generate(name="Alderaan",continents=7,landfraction=0.29,maxz=10.0,nlats=32,h
             x = np.roll(thetacoord,-shift,axis=1)[:,:int(NLON//2)+1]
             y = np.roll(rcoord,-shift,axis=1)[:,:int(NLON//2)+1]
             z = np.roll(dtopo,-shift,axis=1)[:,:int(NLON//2)]
-            fig,ax=plt.subplots(subplot_kw={"projection":"polar"},figsize=(9,9))
-            ax.set_theta_zero_location('N')
-            t=ax.pcolormesh(x,np.sin(y),z,cmap='gist_earth',norm=colors.LogNorm(vmin=10.0))
-            ax.set_rticks([])
-            ax.set_thetagrids([])
-            plt.title("Topography")
-            plt.colorbar(t,label="Geopotential [m$^2$/s$^2$]")
-            plt.savefig(name+"_geoz.png",bbox_inches='tight')
-            plt.savefig(name+"_geoz.pdf",bbox_inches='tight')
-            plt.close('all')  
+            if plot:
+                fig,ax=plt.subplots(subplot_kw={"projection":"polar"},figsize=(9,9))
+                ax.set_theta_zero_location('N')
+                t=ax.pcolormesh(x,np.sin(y),z,cmap='gist_earth',norm=colors.LogNorm(vmin=10.0))
+                ax.set_rticks([])
+                ax.set_thetagrids([])
+                plt.title("Topography")
+                plt.colorbar(t,label="Geopotential [m$^2$/s$^2$]")
+                plt.savefig(name+"_geoz.png",bbox_inches='tight')
+                plt.savefig(name+"_geoz.pdf",bbox_inches='tight')
+                plt.close('all')  
         
         hf = np.copy(dtopo)
         hf[grid>0.5] += 1000.0
@@ -522,9 +535,11 @@ def main():
         -m,--maxz   
             Maximum elevation in km assuming Earth gravity
         --nlats   
-            Number of latitudes (evenly-spaced)--will also set longitudes (twice as many). If unset, PlaSim latitudes and longitudes will be used (T21 resolution)"
+            Number of latitudes (evenly-spaced)--will also set longitudes (twice as many). If unset, PlaSim latitudes and longitudes will be used (T21 resolution; requires netCDF4)"
         -l,--hemispherelongitude   
             Confine land to a hemisphere centered on a given longitude
+        -p,--plot
+            Display plots of the generated continents
         -o,--orthographic   
             Plot orthographic projections centered on hemispherelongitude 
 
@@ -543,17 +558,18 @@ def main():
     parser.add_argument("-n","--name",default="Alderaan",help="Assign a name for the planet")
     parser.add_argument("-m","--maxz",default=10.0,type=float,help="Maximum elevation in km assuming Earth gravity")
     if os.path.exists("T21.nc"):
-        parser.add_argument("--nlats",type=int,help="Number of latitudes (evenly-spaced)--will also set longitudes (twice as many). If unset, PlaSim latitudes and longitudes will be used (T21 resolution)")
+        parser.add_argument("--nlats",type=int,help="Number of latitudes (evenly-spaced)--will also set longitudes (twice as many). If unset, PlaSim latitudes and longitudes will be used (T21 resolution; requires netCDF4)")
     else:
         parser.add_argument("--nlats",default=32,type=int,help="Number of latitudes (evenly-spaced)--will also set longitudes (twice as many).")
     parser.add_argument("-l","--hemispherelongitude",type=float,default=np.nan,help="Confine land to a hemisphere centered on a given longitude")
     parser.add_argument("-o","--orthographic",action="store_true",help="Plot orthographic projections centered on hemispherelongitude")
+    parser.add_argument("-p","--plot",action="store_true",help="Display plots of the generated continents")
     args = parser.parse_args()
     
     output = generate(name=args.name,continents=args.continents,
                                 landfraction=args.landfraction,maxz=args.maxz,
                                 nlats=args.nlats,hemispherelongitude=args.hemispherelongitude,
-                                topo=args.topo,orthographic=args.orthographic)
+                                topo=args.topo,orthographic=args.orthographic, plot=args.plot)
     
         
 if __name__=="__main__" and (Path(sys.argv[0]).name!="sphinx-build" and 
