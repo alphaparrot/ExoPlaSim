@@ -54,7 +54,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store',
                     'preinit.py']
 
 #Modules that cannot be imported at build time
-autodoc_mock_imports = ["petitRADTRANS",]
+autodoc_mock_imports = ["petitRADTRANS","exoplasim.pyfft"]
 
 # -- Options for HTML output -------------------------------------------------
 
