@@ -1,11 +1,9 @@
 Version information
 ==========================
 
-Release of ExoPlaSim with photochemical haze/dust transport and radiative transfer. Transport and radiative transfer schemes are described in **"Haze optical depth in exoplanet atmospheres varies with rotation rate: Implications for observations,"** Cohen et al. (2023). Submitted to The Astrophysical Journal.
+Final maintenance release for 3.x. Includes numerous quality-of-life improvements, modernizations, and bugfixes.
 
-[![DOI](https://zenodo.org/badge/427416551.svg)](https://zenodo.org/badge/latestdoi/427416551)
-
-Follow the main branch at <http://github.com/alphaparrot/ExoPlaSim> for further developments and releases.
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.11542416.svg)](https://doi.org/10.5281/zenodo.11542416)
 
 EXOPLASIM
 =========

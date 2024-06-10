@@ -43,6 +43,9 @@ Contents
 
 Created by Adiv Paradise
 
+.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11542416.svg
+  :target: https://doi.org/10.5281/zenodo.11542416
+
 Copyright 2020, Distributed under the `General Public License`__. 
 
 .. _GPL: LICENSE.html
