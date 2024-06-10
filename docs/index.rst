@@ -62,7 +62,7 @@ Requirements
 Compatibility
 *************
 
-* Linux (tested on Ubuntu 18.04, CentOS 6.10): **Yes**
+* Linux (tested on Ubuntu 22.04): **Yes**
 * Google Colaboratory: Yes (note that OpenMPI support on Colaboratory is limited due to automatic root privileges; look up how to run OpenMPI executables with root permissions and note that this is not recommended)
 * Windows 10: Yes, via Windows Subsystem for Linux
 * Mac OS X: Yes, requires Xcode and developer tools, and `OpenMPI support requires that Fortran-compatible libraries be built. <https://www.open-mpi.org/faq/?category=osx#not-using-osx-bundled-ompi>`_ Tested on Mac OS X Catalina and Big Sur (with MacPorts, GCC10, OpenMPI, and Anaconda3), Apple M1 compatibility has not been tested.
@@ -72,6 +72,32 @@ Optional Requirements
 
 * netCDF4 (for netCDF support)
 * h5py (for HDF5 support)
+* matplotlib (for plotting and interactivity with `makestellarspec` and `randomcontinents` modules)
+
+**Future Development Roadmap:**
+---------------
+
+New features to be included in ExoPlaSim in the future include (but are not limited to) the 
+following, in the order they are likely to appear:
+
+* Coupling with N-body integrators (**confirmed for 4.0.0**)
+* Support for an arbitrary number of light-sources in the sky, with individual temperatures and time-varying brightnesses, as well as single and compound eclipses/transits (**confirmed for 4.0.0**)
+* Support for time-varying geothermal/tidal heat flux into the atmosphere/ocean from the lithosphere (likely 4.0.0 or 4.1.0)
+* Coupling to the GENIE modeling framework to include a dynamic ocean and biogeochemistry
+* Support for extended light sources such as giant planets and rings
+* CO2 tracer transport and condensation
+* Support for swapping in a different radiation model
+
+**New in 3.4:**
+---------------
+
+This is the final 3.x maintenance release before 4.0.0 (coming soon!).
+
+* Updated documentation
+* Several bugfixes including to core model operations such as the physics filters
+* Revamped `pyfft` compilation to eliminate thorny version dependencies--installation and compilation should be a **lot** smoother now.
+* Modernized PlaSim source to be compliant with Fortran 2018 and MPI 4 (required for OpenMPI 5 and GCC 13)
+* Added pass-throughs to the MPI executable to allow runtime flags related to e.g. hyperthreading
 
 **New in 3.3:**
 ---------------
@@ -102,30 +128,10 @@ Installation
 
     pip install exoplasim
     
-OR::
-
-    python setup.py install
-    
-    
-If you know you will want to use NetCDF or HDF5 output formats,
-you can install their dependencies at install-time:
-
-::
-
-    pip install exoplasim[HDF5]
-    
-OR::
-
-    pip install exoplasim[netCDF4]
-    
-OR::
-
-    pip install exoplasim[netCDF4,HDF5]
     
 The first time you import the module and try to create a model
 after either installing or updating, ExoPlaSim will run a 
-configuration script, write the install directory into its 
-source code, and compile the ``pyfft`` library.
+configuration script and compile the ``pyfft`` library.
 
 .. burn7 NetCDF postprocessor. You must 
 .. have NetCDF libraries available in the path when this happens.
@@ -134,17 +140,50 @@ source code, and compile the ``pyfft`` library.
 .. use of features anachronistic to a particular version of NetCDF
 .. that no longer exists.
 
-**NEW in 3.2.2:** If you need to re-run the configuration, because
+**NEW in 3.2.2, updated in 3.4.0:** If you need to re-run the configuration, because
 for example the system libraries/compilers have changed, or the
 configuration failed the first time (usually because OpenMPI
-was not properly configured/visible, and/or numpy's ``f2py`` utility
-was not properly available), then you can call :py:mod:`sysconfigure() <exoplasim.sysconfigure>`
+was not properly configured/visible), then you can call :py:mod:`sysconfigure() <exoplasim.sysconfigure>`
 to rerun the configuration script.
 
 You may also configure and compile the model manually if you wish
 to not use the Python API, by entering the exoplasim/ directory
 and running first configure.sh, then compile.sh (compilation flags
 are shown by running ``./compile.sh -h``). 
+
+If there is a problem with gcc or gfortran being available, `pyfft` compilation may also fail
+or need to be updated. To re-run the `pyfft` compilation, you can run :py:mod:`compile_pyfft()<exoplasim.compile_pyfft>`.
+
+Both of these routines will be called the first time a `Model` is compiled, *if* they have not
+ever been run before. You do not need to run these in order to start compiling and using the
+model. They will also call each other if they detect that compiler detection has not yet been
+completed and `pyfft` has not yet been compiled.
+
+A clean install with conda:
+------------------------------------
+
+ExoPlaSim **requires** at minimum a C compiler, a C++ compiler, and a Fortran compiler.
+For parallel execution, an MPI compiler is also required. 
+**It is heavily recommended that you use the GNU compilers and OpenMPI.** 
+On linux that means gcc, gfortran, g++, and openmpi. On OS X it may be possible to use 
+other C and C++ compilers. Intel Fortran will work with the ExoPlaSim source, but not 
+with `pyfft` compilation through numpy, which means the postprocessor will not work 
+properly with Intel Fortran. That may or may not be a dealbreaker for you.
+
+One of the easiest and safest ways to ensure you have met the compilation dependencies
+is to use something like conda. While ExoPlaSim itself does not (yet) have a compilation
+recipe available through conda or conda-forge, there are versions of gcc, gxx, gfortran, and 
+openmpi that can be installed through conda via the `conda-forge <https://conda-forge.org/docs/user/introduction/#how-can-i-install-packages-from-conda-forge>`_ channel. 
+
+An ExoPlaSim installation (including compiler configuration and `pyfft` compilation)  in a 
+conda environment would therefore look like:
+
+::
+
+    conda install -c conda-forge gcc gxx gfortran openmpi python
+    pip install exoplasim
+    python -c "import exoplasim; exoplasim.sysconfigure()"
+
 
 .. **NOTE ON INSTALLING EXOPLASIM FOR MULTIPLE PYTHON 3 VERSIONS:**
 .. 
@@ -233,7 +272,7 @@ contents as a python dictionary. There should not be any empty settings.
 If something appears missing such as an MPI or Fortran compiler, and you
 believe it's installed, you can check by running e.g. ``mpifort --help``
 or ``gfortran --help``. Additionally, for ``pyfft`` problems, verify that numpy's
-``f2py`` utility is available by running ``f2py -h`` or ``f2py3 -h``. If any of these
+``f2py`` utility is available by running ``python -c "import numpy.f2py"``. If any of these
 fails but the library in question is installed, that suggests it is not in
 the system path (the list of directories where programs may look for libraries
 and executables). Ensure all libraries are properly installed, configured,
@@ -272,7 +311,7 @@ PlaSim Documentation
 --------------------
 
 Original PlaSim documentation is available in the exoplasim/docs/
-folder.
+folder and `online <https://github.com/alphaparrot/ExoPlaSim/blob/master/exoplasim/plasim/doc/PS_ReferenceManual.pdf>`_.
 
 Usage
 -----
@@ -283,7 +322,7 @@ modify method, and then run it.
 
 An IPython notebook is included with ExoPlaSim; which demonstrates
 basic usage. It can be found in the ExoPlaSim installation directory,
-or `downloaded directly here. <https://raw.githubusercontent.com/alphaparrot/ExoPlaSim/master/exoplasim/exoplasim_tutorial.ipynb>`_
+or `viewed directly here. <https://github.com/alphaparrot/ExoPlaSim/blob/master/exoplasim/exoplasim_tutorial.ipynb>`_
 
 Basic example:::
 
