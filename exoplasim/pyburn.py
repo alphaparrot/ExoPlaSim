@@ -4035,6 +4035,7 @@ def f2py_compile(source,
     """
     import tempfile
     import shlex
+    import subprocess
 
     if source_fn is None:
         f, fname = tempfile.mkstemp(suffix=extension)
