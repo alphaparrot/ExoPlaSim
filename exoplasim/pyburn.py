@@ -494,7 +494,7 @@ def readallvariables(fbuffer):
     return headers, variables
     
     
-def refactorvariable(variable,header,nlev=10):
+def refactorvariable(variable,header,ntimes=None,nlev=10):
     '''Given a 1D data array extracted from a file with :py:func:`readrecord <exoplasim.pyburn.readrecord>`, reshape it into its appropriate dimensions.
     
     Parameters
@@ -519,11 +519,18 @@ def refactorvariable(variable,header,nlev=10):
     dim2 = min(header[4],header[5])
     if header[1]==1:
         nlevs=nlev
-        if len(variable)%(float(len(variable))/(dim1*dim2*nlevs))!=0:
-            nlevs+=1
+        if ntimes is not None:
+            if ntimes*nlevs*dim1*dim2<len(variable):
+                nlevs=int(len(variable)/(ntimes*dim1*dim2))
+        else:
+            if len(variable)%(float(len(variable))/(dim1*dim2*nlevs))!=0:
+                nlevs+=1
     else:
         nlevs=1
-    ntimes = int(len(variable)//(dim1*dim2*nlevs))
+        if ntimes is not None and ntimes*dim1*dim2>len(variable):
+            ntimes = int(len(variable)//(dim1*dim2))
+    if ntimes is None:
+        ntimes = int(len(variable)//(dim1*dim2*nlevs))
     if nlevs==1:
         if dim2==1:
             if dim1==1:
@@ -572,18 +579,17 @@ def readfile(filename):
     
     #time = _gettimevar(fbuffer) #This means we do one additional sweep through the file
     time = variables["time"]
+    ntimes = len(time)
     kcodes.remove("time")
     
     data = {}
     
     for key in kcodes:
-        data[key] = refactorvariable(variables[key],headers[key],nlev=nlevs)
+        data[key] = refactorvariable(variables[key],headers[key],ntimes=ntimes,nlev=nlevs)
     
     nlat = min(headers['main'][4],headers['main'][5])
     nlon = max(headers['main'][4],headers['main'][5])
     ntru = headers['main'][7]
-    ntimes = len(time)
-    
     
     if sys.version[0]=="2":
         if nlat in [192,320]:
@@ -1717,7 +1723,7 @@ def dataset(filename, variablecodes, mode='grid', zonal=False, substellarlon=180
                         for i in range(nlon):
                             wap[t,:,j,i] = (pa[t,:,j,i]*(uu[t,:,j,i]*dpsdx[t,j,i] 
                                                         +vv[t,:,j,i]*dpsdy[t,j,i]) 
-                                            - scipy.integrate.cumtrapz(np.append([0,],
+                                            - scipy.integrate.cumulative_trapezoid(np.append([0,],
                                                                        dv[t,:,j,i]
                                                                        +uu[t,:,j,i]*dpsdx[t,j,i]
                                                                        +vv[t,:,j,i]*dpsdy[t,j,i]),
@@ -1774,7 +1780,7 @@ def dataset(filename, variablecodes, mode='grid', zonal=False, substellarlon=180
                             for i in range(nlon):
                                 omega[t,:,j,i] = (pa[t,:,j,i]*(uu[t,:,j,i]*dpsdx[t,j,i] 
                                                             +vv[t,:,j,i]*dpsdy[t,j,i]) 
-                                                - scipy.integrate.cumtrapz(np.append([0,],
+                                                - scipy.integrate.cumulative_trapezoid(np.append([0,],
                                                                         dv[t,:,j,i]
                                                                         +uu[t,:,j,i]*dpsdx[t,j,i]
                                                                         +vv[t,:,j,i]*dpsdy[t,j,i]),
@@ -1876,7 +1882,7 @@ def dataset(filename, variablecodes, mode='grid', zonal=False, substellarlon=180
                 for nt in range(ntime):
                     for jlat in range(nlat):
                         for jlon in range(nlon):
-                            vadp[nt,:,jlat,jlon] = scipy.integrate.cumtrapz(va[nt,:,jlat,jlon],
+                            vadp[nt,:,jlat,jlon] = scipy.integrate.cumulative_trapezoid(va[nt,:,jlat,jlon],
                                                                            x=pa[nt,:,jlat,jlon],
                                                                            initial=0.0)
                     
@@ -2158,7 +2164,7 @@ def dataset(filename, variablecodes, mode='grid', zonal=False, substellarlon=180
 
 
 def advancedDataset(filename, variablecodes, mode='grid', substellarlon=180.0,
-                    radius=1.0,gravity=9.80665,gascon=287.0,logfile=None):
+                    radius=1.0,gravity=9.80665,gascon=287.0,physfilter=False,logfile=None):
     '''Read a raw output file, and construct a dataset.
     
     Parameters
@@ -2552,7 +2558,7 @@ def advancedDataset(filename, variablecodes, mode='grid', substellarlon=180.0,
                         for i in range(nlon):
                             wap[t,:,j,i] = (pa[t,:,j,i]*(uu[t,:,j,i]*dpsdx[t,j,i] 
                                                         +vv[t,:,j,i]*dpsdy[t,j,i]) 
-                                            - scipy.integrate.cumtrapz(np.append([0,],
+                                            - scipy.integrate.cumulative_trapezoid(np.append([0,],
                                                                        dv[t,:,j,i]
                                                                        +uu[t,:,j,i]*dpsdx[t,j,i]
                                                                        +vv[t,:,j,i]*dpsdy[t,j,i]),
@@ -2609,7 +2615,7 @@ def advancedDataset(filename, variablecodes, mode='grid', substellarlon=180.0,
                                 for i in range(nlon):
                                     omega[t,:,j,i] = (pa[t,:,j,i]*(uu[t,:,j,i]*dpsdx[t,j,i] 
                                                                   +vv[t,:,j,i]*dpsdy[t,j,i]) 
-                                                      - scipy.integrate.cumtrapz(np.append([0,],
+                                                      - scipy.integrate.cumulative_trapezoid(np.append([0,],
                                                                              dv[t,:,j,i]
                                                                              +uu[t,:,j,i]*dpsdx[t,j,i]
                                                                              +vv[t,:,j,i]*dpsdy[t,j,i]),
@@ -2711,7 +2717,7 @@ def advancedDataset(filename, variablecodes, mode='grid', substellarlon=180.0,
                 for nt in range(ntime):
                     for jlat in range(nlat):
                         for jlon in range(nlon):
-                            vadp[nt,:,jlat,jlon] = scipy.integrate.cumtrapz(va[nt,:,jlat,jlon],
+                            vadp[nt,:,jlat,jlon] = scipy.integrate.cumulative_trapezoid(va[nt,:,jlat,jlon],
                                                                            x=pa[nt,:,jlat,jlon],
                                                                            initial=0.0)
                     

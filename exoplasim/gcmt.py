@@ -1024,7 +1024,7 @@ def eqstream(file,radius=6.371e6,gravity=9.80665):
     numpy.ndarray(1D), numpy.ndarray(1D), numpy.ndarray(2D)
         tidally-locked latitude, layer interface pressures, and TL streamfunction
     '''
-    from scipy.integrate import cumtrapz
+    from scipy.integrate import cumulative_trapezoid
     
     if type(dataset)==str:
         dataset = _Dataset(dataset,"r")
@@ -1047,7 +1047,7 @@ def eqstream(file,radius=6.371e6,gravity=9.80665):
     for nt in range(ntime):
         for jlat in range(nlat):
             for jlon in range(nlon):
-                vadp[nt,:jlat,jlon] = cumtrapz(va[nt,:,jlat,jlon],
+                vadp[nt,:jlat,jlon] = cumulative_trapezoid(va[nt,:,jlat,jlon],
                                                x=pa[nt,:,jlat,jlon],
                                                initial=0.0)
         
@@ -1057,7 +1057,7 @@ def eqstream(file,radius=6.371e6,gravity=9.80665):
     
     psurf = spatialmath(dataset.variables['ps'][:],lon=lon,lat=lat)
     
-    #mvadp = cumtrapz(mva,x=lev[:]*ps*100.0,axis=1) #integrate in Pa not hPa
+    #mvadp = cumulative_trapezoid(mva,x=lev[:]*ps*100.0,axis=1) #integrate in Pa not hPa
     #prefactor = 2*np.pi*plarad/grav #2piR/g
     #stf = prefactor*np.cos(lat_TL[np.newaxis,np.newaxis,:]*np.pi/180.0)*mvadp
     #pmid = 0.5*(lev[1:]+lev[:-1])*ps
@@ -1478,7 +1478,7 @@ def tlstream(dataset,radius=6371.0e3,gravity=9.80665,substellar=0.0):
     numpy.ndarray(1D), numpy.ndarray(1D), numpy.ndarray(2D)
         tidally-locked latitude, layer interface pressures, and TL streamfunction
     '''
-    from scipy.integrate import cumtrapz
+    from scipy.integrate import cumulative_trapezoid
     
     if type(dataset)==str:
         dataset = _Dataset(dataset,"r")
@@ -1505,7 +1505,7 @@ def tlstream(dataset,radius=6371.0e3,gravity=9.80665,substellar=0.0):
     for nt in range(ntime):
         for jlat in range(nlat):
             for jlon in range(nlon):
-                vadp[nt,:,jlat,jlon] = cumtrapz(va_TL[nt,:,jlat,jlon],x=pa[nt,:,jlat,jlon],initial=0.0)
+                vadp[nt,:,jlat,jlon] = cumulative_trapezoid(va_TL[nt,:,jlat,jlon],x=pa[nt,:,jlat,jlon],initial=0.0)
         
     prefactor = 2*np.pi*radius/gravity*np.cos(lat*np.pi/180.0)
     sign = -1 #-1 for synchronous, 1 for equatorial
@@ -1513,7 +1513,7 @@ def tlstream(dataset,radius=6371.0e3,gravity=9.80665,substellar=0.0):
     
     psurf = spatialmath(dataset.variables['ps'][:],lon=lon,lat=lat)
     
-    #mvadp = cumtrapz(mva,x=lev[:]*ps*100.0,axis=1) #integrate in Pa not hPa
+    #mvadp = cumulative_trapezoid(mva,x=lev[:]*ps*100.0,axis=1) #integrate in Pa not hPa
     #prefactor = 2*np.pi*plarad/grav #2piR/g
     #stf = prefactor*np.cos(lat_TL[np.newaxis,np.newaxis,:]*np.pi/180.0)*mvadp
     #pmid = 0.5*(lev[1:]+lev[:-1])*ps

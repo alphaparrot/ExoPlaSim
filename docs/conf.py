@@ -27,7 +27,7 @@ copyright = '2020, Adiv Paradise; 2023, Maureen J. Cohen'
 author = 'Adiv Paradise, Maureen J. Cohen'
 
 # The full version, including alpha/beta/rc tags
-release = '3.4.0'
+release = '3.4.1'
 
 
 # -- General configuration ---------------------------------------------------
