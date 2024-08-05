@@ -3,7 +3,7 @@ Version information
 
 Final maintenance release for 3.x. Includes numerous quality-of-life improvements, modernizations, and bugfixes.
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.11542416.svg)](https://doi.org/10.5281/zenodo.11542416)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.2533357.svg)](https://doi.org/10.5281/zenodo.2533357)
 
 EXOPLASIM
 =========
