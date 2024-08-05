@@ -8,7 +8,7 @@ version="3.4.1"
 dependencies = ["ninja",
     "meson",
     "scipy>=1.6.0",
-    "numpy>=1.22,<2.0"
+    "numpy>=1.22"
     ]
 authors = [
  {name = "Adiv Paradise", email = "paradise.astro@gmail.com"},

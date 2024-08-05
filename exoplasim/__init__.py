@@ -81,7 +81,7 @@ def compile_pyfft():
         import numpy.f2py
         with open("pyfft.f90","r") as pyfft_file:
             pyfft_source = pyfft_file.read()
-        failed = numpy.f2py.compile(pyfft_source,modulename='pyfft',
+        failed = pyburn.f2py_compile(pyfft_source,modulename='pyfft',
                                     extra_args='--f90exec=gfortran --f77exec=gfortran --f90flags="-O3"',
                                     extension='.f90')
         if failed!=0:
@@ -90,7 +90,7 @@ def compile_pyfft():
         
         with open("pyfft991.f90","r") as pyfft991_file:
             pyfft991_source = pyfft991_file.read()
-        failed = numpy.f2py.compile(pyfft991_source,modulename='pyfft991',
+        failed = pyburn.f2py_compile(pyfft991_source,modulename='pyfft991',
                                     extra_args='--f90exec=gfortran --f77exec=gfortran --f90flags="-O3"',
                                     extension='.f90')
         if failed!=0:
@@ -166,7 +166,7 @@ def sysconfigure():
         #import numpy.f2py
         #with open("pyfft.f90","r") as pyfft_file:
             #pyfft_source = pyfft_file.read()
-        #failed = numpy.f2py.compile(pyfft_source,modulename='pyfft',
+        #failed = pyburn.f2py_compile(pyfft_source,modulename='pyfft',
                                     #extra_args='--f90exec=gfortran --f77exec=gfortran --f90flags="-O3"',
                                     #extension='.f90')
         #if failed!=0:
@@ -175,7 +175,7 @@ def sysconfigure():
         
         #with open("pyfft991.f90","r") as pyfft991_file:
             #pyfft991_source = pyfft991_file.read()
-        #failed = numpy.f2py.compile(pyfft991_source,modulename='pyfft991',
+        #failed = pyburn.f2py_compile(pyfft991_source,modulename='pyfft991',
                                     #extra_args='--f90exec=gfortran --f77exec=gfortran --f90flags="-O3"',
                                     #extension='.f90')
         #if failed!=0:
