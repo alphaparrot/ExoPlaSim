@@ -183,10 +183,13 @@ conda environment would therefore look like:
 
 ::
 
-    conda install -c conda-forge gcc gxx gfortran openmpi python
+    conda install -c conda-forge gcc gxx gfortran "openmpi<5.0.1" python
     pip install exoplasim
     python -c "import exoplasim; exoplasim.sysconfigure()"
 
+Note that at present, OpenMPI 5.0.1 onwards from conda-forge is affected by a `critical bug <https://github.com/conda-forge/openmpi-feedstock/issues/143>`_
+related to linking against outdated C libraries on the conda-forge side; ExoPlaSim will fail
+to compile with OpenMPI if using conda-forge OpenMPI later than 5.0.0.
 
 .. **NOTE ON INSTALLING EXOPLASIM FOR MULTIPLE PYTHON 3 VERSIONS:**
 .. 
