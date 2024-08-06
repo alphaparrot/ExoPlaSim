@@ -2004,7 +2004,7 @@ class Model(object):
             pHe=None,pN2=None,pO2=None,pCO2=None,pCH4=None,pAr=None,pNe=None,
             pKr=None,pH2O=None,gascon=None,pressure=None,pressurebroaden=True,
             vtype=0,rotationperiod=1.0,synchronous=False,substellarlon=180.0,
-            keplerian=False,meananomaly0=None,
+            keplerian=False,meananomaly0=None,allowlibrate=True,soldaysperorb=0.0,
             year=None,glaciers={"toggle":False,"mindepth":2.0,"initialh":-1.0},
             restartfile=None,gravity=None,radius=None,eccentricity=None,
             obliquity=None,lonvernaleq=None,fixedorbit=False,orography=None,
@@ -2143,6 +2143,12 @@ class Model(object):
                The rate of drift of the substellar point in degrees per minute. May be positive or negative.
             substellarlon : float, optional
                The longitude of the substellar point, if synchronous==True. Default 180°
+            allowlibrate : bool, optional
+               True/False. If True and synchronous==True, allows for libration of the substellar point due to obliquity and eccentricity. True by default.
+            soldaysperorb : float, optional
+               If synchronous==True, solar days experienced per orbit. 0.0 is typical tidal-locked behavior,
+               but other values can be used for other spin-orbit resonances, e.g. 0.5 for 3:2 resonance
+               or 1.0 for 2:1. In these cases, substellarlon marks the starting substellar longitude (before accounting for libration).
             pressurebroaden : bool, optional 
                True/False. If False, pressure-broadening of absorbers no longer depends
                on surface pressure. Default is True
@@ -2687,6 +2693,12 @@ References
         if meananomaly0 is not None:
             self._edit_namelist("planet_namelist","MEANANOM0",str(meananomaly0))
         self.meananomaly0 = meananomaly0
+
+        self._edit_namelist("radmod_namelist","ALLOWLIBRATE",str(allowlibrate*1))
+        self.allowlibrate = allowlibrate
+
+        self._edit_namelist("radmod_namelist","DAYSPERORB",str(soldaysperorb))
+        self.soldaysperorb = soldaysperorb
         
         if type(orography)!=type(None):
             self._edit_namelist("landmod_namelist","OROSCALE",str(orography))
@@ -3174,6 +3186,15 @@ References
             aerobulk = 1
             aerorad = True
             aerofile = None
+
+        try:
+            allowlibrate = bool(cfg[93])
+        except:
+            allowlibrate = True
+        try:
+            soldaysperorb = float(cfg[94])
+        except:
+            soldaysperorb = 0.0
         
         self.configure(noutput=noutput,flux=flux,startemp=startemp,starspec=starspec,starradius=starradius,
                     gascon=gascon,pressure=pressure,pressurebroaden=pressurebroaden,
@@ -3203,7 +3224,8 @@ References
                     nstorms=nstorms,stormcapture=stormcapture,topomap=topomap,tlcontrast=tlcontrast,
                     otherargs=otherargs,glaciers=glaciers,threshold=threshold,keplerian=keplerian,
                     meananomaly0=meananomaly0,apart=apart,rhop=rhop,fcoeff=fcoeff,aerobulk=aerobulk,
-                    aerorad=aerorad,aerosol=aerosol,asource=asource,aerofile=aerofile)       
+                    aerorad=aerorad,aerosol=aerosol,asource=asource,aerofile=aerofile,
+                    allowlibrate=allowlibrate,soldaysperorb=soldaysperorb)       
     
     def modify(self,**kwargs):
         """Modify any already-configured parameters. All parameters accepted by :py:func:`configure() <exoplasim.Model.configure>` can be passed as arguments.
@@ -3411,6 +3433,12 @@ References
                 self.meananomaly0=value
                 if self.meanomaly0 is not None:
                     self._edit_namelist("planet_namelist","MEANANOMALY0",str(self.meananomaly0))
+            if key=="allowlibrate":
+                self.allowlibrate=value
+                self._edit_namelist("radmod_namelist","ALLOWLIBRATE",str(allowlibrate*1))
+            if key=="soldaysperorb":
+                self.soldaysperorb=value
+                self._edit_namelist("radmod_namelist","DAYSPERORB",str(soldaysperorb))
             if key=="tlcontrast":
                 self.tlcontrast=value
                 self._edit_namelist("plasim_namelist","DTTL",str(self.tlcontrast))
@@ -4156,6 +4184,8 @@ References
         cfg.append(str(self.aerobulk))
         cfg.append(str(self.aerorad*1))
         cfg.append(str(self.aerofile))
+        cfg.append(str(self.allowlibrate*1))
+        cfg.append(str(self.soldaysperorb))
         
         print("Writing configuration....\n"+"\n".join(cfg))
         print("Writing to %s...."%filename)
