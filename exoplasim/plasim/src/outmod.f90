@@ -1666,7 +1666,7 @@
       
       sigrain(:) = 0.
       where (dls(:) .gt. 0.5)
-        where (dt(:,NLEP) .ge. 273.15)
+        where (dt(:,NLEP) .gt. 273.15)
           sigrain(:) = (dprc(:) + dprl(:))*8.64e7
         endwhere
       endwhere
