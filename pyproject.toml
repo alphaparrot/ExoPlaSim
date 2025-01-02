@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "exoplasim"
-version="3.4.1"
+version="3.4.2"
 dependencies = ["ninja",
     "meson",
     "scipy>=1.6.0",

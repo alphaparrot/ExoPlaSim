@@ -1663,8 +1663,14 @@
 !     *****************************
 !     * Weatherable Precipitation *
 !     *****************************
-        
-      call writegp(140,asigrain,319,0)
+      
+      sigrain(:) = 0.
+      where (dls(:) .gt. 0.5)
+        where (dt(:,NLEP) .ge. 273.15)
+          sigrain(:) = (dprc(:) + dprl(:))*8.64e7
+        endwhere
+      endwhere
+      call writegp(140,sigrain,319,0)
 
 !     ***********************
 !     * Minimum Temperature *

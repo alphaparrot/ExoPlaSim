@@ -528,6 +528,7 @@
       real :: ats0(NHOR)  = 0. ! accumulated surface temperature
       real :: azmuz(NHOR) = 0. ! mean cosine of solar zenith angle
       
+      real :: sigrain(NHOR) = 0. !instantaneous weathering-significant precipitation [mm/day]
       real :: asigrain(NHOR) = 0. !accumulated weathering-significant precipitation [mm/day]
       real :: tempmax(NHOR) = 0. !accumulated maximum temperature
       real :: tempmin(NHOR) = 1.0e3 !accumulated minimum temperature
