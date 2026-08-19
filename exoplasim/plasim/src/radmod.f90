@@ -48,6 +48,52 @@
       real    :: co3     = 5000.  ! parameter to define o3 profile
       real    :: toffo3  = 0.25    ! parameter to define o3 profile
       real    :: o3scale = 1.0    ! scale o3 concentration
+!     Spectral re-weighting of the Lacis & Hansen (1974) ozone absorptances for a
+!     non-solar host. Their three terms give absorptance as a fraction of TOTAL
+!     incident SOLAR flux, so each carries the Sun's share of flux in the band it
+!     represents. Under a differently-shaped spectrum those shares change, and
+!     the unmodified code applies solar band weights to a non-solar star. Both
+!     default to 1.0, reproducing Lacis & Hansen exactly, so a solar-host run is
+!     bit-identical.
+      real    :: o3uvw   = 1.0    ! weight, Hartley-Huggins UV terms
+      real    :: o3visw  = 1.0    ! weight, Chappuis visible term
+!     The same correction in the larger term. Lacis & Hansen's water vapour
+!     absorptance is their Eq. 21, a fit to Yamamoto (1962), and Yamamoto states
+!     the definition outright: the ratio to the SOLAR CONSTANT of the energy
+!     absorbed by the whole air column. It is a fraction of total incident flux
+!     and the Sun's spectrum is inside it, because Yamamoto built it by weighting
+!     laboratory band absorptivities with the solar flux and summing them.
+!
+!     Dividing by zsolar2 below converts it to a fraction of band-2 flux and then
+!     multiplies it back by band-2 flux, so the two cancel and the ABSORBED FLUX
+!     is Lacis & Hansen's solar value for any star at all. A redder host puts
+!     more of its flux in the near infrared where water vapour absorbs, and gets
+!     the Sun's absorption anyway. h2osww is that band re-weighting.
+!
+!     Default 1.0 reproduces Lacis & Hansen exactly, so a solar-host run is
+!     bit-identical.
+      real    :: h2osww  = 1.0    ! weight, near-infrared H2O bands
+!     Shortwave CO2, which this scheme does not have at all. swr carries ozone in
+!     band 1 and water vapour in band 2 and nothing else; CO2 appears only in
+!     lwr, from Sasamori (1968). Lacis & Hansen did not parameterise the
+!     near-infrared CO2 bands either, so the port is faithful and the ABSORBER is
+!     simply missing -- and a redder host puts about 1.5x the Sun's share of its
+!     flux into those bands.
+!
+!     The absorptance below is built the way Yamamoto built the water vapour one:
+!     Howard, Burch & Williams (1956) band absorptions weighted by a SOLAR
+!     spectrum and charged only with what water vapour leaves them. So it is a
+!     fraction of TOTAL incident flux and is divided by zsolar2 for the same
+!     reason Eq. 21 is, and co2sww is the band re-weighting for a non-solar host,
+!     exactly as h2osww is.
+!
+!     ZERO IS THE DEFAULT AND MEANS THE TERM IS ABSENT, not that it is
+!     solar-weighted. Upstream has no shortwave CO2, so zero is what reproduces
+!     it and a rebuilt binary is bit-identical until the namelist turns this on.
+!     1.0 is the solar-weighted term; the value for a given host is the ratio of
+!     its CO2 absorptance to the Sun's, which is what
+!     exoplasim/scripts/shortwave_band_weights.py derives.
+      real    :: co2sww  = 0.0    ! weight, near-infrared CO2 bands; 0 = absent
       integer :: no3     = 1      ! switch for ozon (0=no,1=yes,2=datafile)
       integer :: nsol    = 1      ! switch for solang (1/0=yes/no)
       integer :: nswr    = 1      ! switch for swr (1/0=yes/no)
@@ -605,6 +651,7 @@
 !
       namelist/radmod_nl/ndcycle,ncstsol,solclat,solcdec,no3,co2        &
      &               ,iyrbp,nswr,nlwr,nfixed,slowdown,nradice,npbroaden,desync    &
+     &               ,o3uvw,o3visw,h2osww,co2sww   &
      &               ,a0o3,a1o3,aco3,bo3,co3,toffo3,o3scale,newrsc,necham,necham6   &
      &               ,nsol,nclouds,nswrcl,nrscat,rcl1,rcl2,acl2,clgray,tpofmt   &
      &               ,acllwr,tswr1,tswr2,tswr3,th2oc,dawn,starbbtemp,nstartemp  &
@@ -759,6 +806,10 @@
       call mpbcr(bo3)
       call mpbcr(co3)
       call mpbcr(toffo3)
+      call mpbcr(o3uvw)
+      call mpbcr(o3visw)
+      call mpbcr(h2osww)
+      call mpbcr(co2sww)
       call mpbcr(o3scale)
       call mpbcr(co2)
       call mpbcr(gsol0)
@@ -1568,6 +1619,35 @@
       parameter(zmbar=1.9)      ! magnification factor ozon
       parameter(zro3=2.14)      ! ozon density (kg/m**3 STP)
       parameter(zfo3=100./zro3) ! transfere o3 to cm STP
+!     CO2, the same constants lwr already uses, so the shortwave column and the
+!     longwave one are the same quantity. zpv2pm is the molecular weight ratio
+!     that turns a VOLUME mixing ratio into a mass one: hydrostatic balance
+!     converts total pressure into mass, not partial pressure, and leaving it out
+!     understates the column by a factor of 1.52.
+      parameter(zmmair=0.0289644)  ! molecular weight air (kg/mol)
+      parameter(zmmco2=0.0440098)  ! molecular weight co2 (kg/mol)
+      parameter(zpv2pm=zmmco2/zmmair) ! co2 ppvol to ppmass
+      parameter(zrco2=1.9635)      ! co2 density (kg/m**3 STP)
+      parameter(zfco2=100./zrco2)  ! transfere co2 to cm STP
+!     The solar-weighted CO2 absorptance, as a fraction of TOTAL incident flux
+!     against the absorber amount u in atmos-cm:
+!
+!         A(u) = zca1 ln(1 + zcb1 u) + zca2 ln(1 + zcb2 u)
+!
+!     fitted by exoplasim/scripts/shortwave_band_weights.py to Howard, Burch &
+!     Williams' band absorptions integrated against a 5772 K spectrum, each band
+!     multiplied by the fraction of its interval water vapour has left so the two
+!     gases do not both claim the same photons. Two logarithms rather than Lacis
+!     & Hansen's Eq. 21 form because that form fits this curve worse and wants a
+!     negative coefficient in its denominator, which can go singular on a column
+!     nothing here forbids. Quoted over 1 to 1e4 atmos-cm, which the model never
+!     leaves: the thinnest sigma layer carries a few percent of the column and
+!     the smallest magnification is zbetta. Within that range the fit is 4%
+!     of itself at worst and 1.2% rms.
+      parameter(zca1=3.8265E-4)
+      parameter(zcb1=44.539)
+      parameter(zca2=2.2325E-3)
+      parameter(zcb2=5.8954E-3)
       parameter(aa=0.2542857142857143)
       parameter(bb=0.8229693877551021)
       parameter(c0=0.14997959183673468)
@@ -1586,6 +1666,8 @@
       real zxo3l(NHOR,NLEV)  ! effective ozon amount (top-l)
       real zwvl(NHOR,NLEV)   ! water vapor amount (top-l)
       real zywvl(NHOR,NLEV)  ! effective water vapor amount (top-l)
+      real zco2l(NHOR,NLEV)  ! co2 amount (top-l)
+      real zyco2l(NHOR,NLEV) ! effective co2 amount (top-l)
       real zrcs(NHOR,NLEV)   ! clear sky reflexivity (downward beam)
       real zrcsu(NHOR,NLEV)  ! clear sky reflexivity (upward beam)
 !
@@ -1609,6 +1691,12 @@
       real zywvt(NHOR)             ! total effective water vapor amount (top-sfc)
       real ztwv(NHOR),ztwvu(NHOR)  ! water vapor trasmissivity (d/u)
       real ztwvt(NHOR),ztwvtu(NHOR)! total water vapor transmissivities (d/u)
+      real zco2(NHOR)              ! co2 amount
+      real zco2t(NHOR)             ! total co2 amount (top-sfc)
+      real zyco2t(NHOR)            ! total effective co2 amount (top-sfc)
+      real ztco2(NHOR),ztco2u(NHOR)! co2 transmissivity (d/u)
+      real ztco2t(NHOR),ztco2tu(NHOR)! total co2 transmissivities (d/u)
+      real zzco2                   ! co2 mass mixing ratio (kg/kg)
 !
       real zra1(NHOR),zra2(NHOR)   ! reflexivities combined layer (direct)
       real zra1s(NHOR),zra2s(NHOR) ! reflexivities combined layer (scatterd)
@@ -1778,7 +1866,15 @@
        zxo3t(:)=0.
        zwvt(:)=0.
        zywvt(:)=0.
+       zco2t(:)=0.
+       zyco2t(:)=0.
       endwhere
+!
+!     CO2 is well mixed, so its mass mixing ratio is one scalar for the column.
+!     co2 is the namelist volume mixing ratio in ppmv, the same quantity lwr
+!     reads through dqco2.
+!
+      zzco2=zpv2pm*1.E-6*co2
       do jlev=1,NLEV
        where(losun(:))
         zo3(:)=zfo3*dsigma(jlev)*dp(:)*dqo3(:,jlev)/ga
@@ -1794,6 +1890,20 @@
      &          +(1.-zcs(:))*(zywvt(:)+zbetta*zwv(:))
         zwvl(:,jlev)=zwvt(:)
         zywvl(:,jlev)=zywvt(:)
+!
+!     CO2 amount, reduced to standard pressure the same way the water vapour
+!     amount above it is and lwr's own CO2 amount is (radmod.f90 zqco2): the fit
+!     is stated at standard pressure and the scheme reaches it by scaling the
+!     amount by sigma*ps/p0 rather than by scaling the pressure. No temperature
+!     factor, because Howard's CO2 constants carry none and lwr applies none.
+!
+        zco2(:)=zfco2*zzco2*dsigma(jlev)*dp(:)/ga                        &
+     &         *sigma(jlev)*dp(:)/100000.
+        zco2t(:)=zco2t(:)+zco2(:)
+        zyco2t(:)=zcs(:)*(zyco2t(:)+zm(:)*zco2(:))                       &
+     &           +(1.-zcs(:))*(zyco2t(:)+zbetta*zco2(:))
+        zco2l(:,jlev)=zco2t(:)
+        zyco2l(:,jlev)=zyco2t(:)
         zcs(:)=zcs(:)*(1.-dcc(:,jlev)*nclouds)
         zrcs(:,jlev) = (aa/(1.+bb*zmu0(:))*zcs+c0*(1.-zcs(:)-dcc(:,NLEV)*nclouds))   &
      &                  *dsigma(jlev)*(dp(:)/101100.0)*(9.80665/ga)*nrscat*newrsc
@@ -1898,13 +2008,18 @@
        zto3t(:)=1.
        zo3(:)=zxo3t(:)+zmbar*zo3t(:)
        zto3tu(:)=1.                                                     &
-     &          -(0.02118*zo3(:)/(1.+0.042*zo3(:)+0.000323*zo3(:)**2)   &
-     &           +1.082*zo3(:)/((1.+138.6*zo3(:))**0.805)               &
-     &           +0.0658*zo3(:)/(1.+(103.6*zo3(:))**3))/zsolar1
+     &          -(o3visw*0.02118*zo3(:)/(1.+0.042*zo3(:)+0.000323*zo3(:)**2)   &
+     &           +o3uvw*1.082*zo3(:)/((1.+138.6*zo3(:))**0.805)               &
+     &           +o3uvw*0.0658*zo3(:)/(1.+(103.6*zo3(:))**3))/zsolar1
        ztwvt(:)=1.
        zwv(:)=zywvt(:)+zbetta*zwvt(:)
-       ztwvtu(:)=1.-2.9*zwv(:)/((1.+141.5*zwv(:))**0.635+5.925*zwv(:))  &
+       ztwvtu(:)=1.-h2osww*2.9*zwv(:)                                   &
+     &            /((1.+141.5*zwv(:))**0.635+5.925*zwv(:))              &
      &            /zsolar2
+       ztco2t(:)=1.
+       zco2(:)=zyco2t(:)+zbetta*zco2t(:)
+       ztco2tu(:)=1.-co2sww*(zca1*LOG(1.+zcb1*zco2(:))                  &
+     &                      +zca2*LOG(1.+zcb2*zco2(:)))/zsolar2
 !
 !     clear sky scattering (Rayleigh scatterin lower most level only)
 !
@@ -1952,9 +2067,9 @@
 !
         zo3(:)=zxo3l(:,jlev)
         zto3(:)=(1.                                                     &
-     &          -(0.02118*zo3(:)/(1.+0.042*zo3(:)+0.000323*zo3(:)**2)   &
-     &           +1.082*zo3(:)/((1.+138.6*zo3(:))**0.805)               &
-     &           +0.0658*zo3(:)/(1.+(103.6*zo3(:))**3))/zsolar1)        &
+     &          -(o3visw*0.02118*zo3(:)/(1.+0.042*zo3(:)+0.000323*zo3(:)**2)   &
+     &           +o3uvw*1.082*zo3(:)/((1.+138.6*zo3(:))**0.805)               &
+     &           +o3uvw*0.0658*zo3(:)/(1.+(103.6*zo3(:))**3))/zsolar1)        &
      &         /zto3t(:)
         zto3t(:)=zto3t(:)*zto3(:)
 !
@@ -1962,9 +2077,9 @@
 !
         zo3(:)=zxo3t(:)+zmbar*(zo3t(:)-zo3l(:,jlev))
         zto3u(:)=zto3tu(:)                                              &
-     &         /(1.-(0.02118*zo3(:)/(1.+0.042*zo3(:)+0.000323*zo3(:)**2)&
-     &              +1.082*zo3(:)/((1.+138.6*zo3(:))**0.805)            &
-     &              +0.0658*zo3(:)/(1.+(103.6*zo3(:))**3))/zsolar1)
+     &         /(1.-(o3visw*0.02118*zo3(:)/(1.+0.042*zo3(:)+0.000323*zo3(:)**2)&
+     &              +o3uvw*1.082*zo3(:)/((1.+138.6*zo3(:))**0.805)            &
+     &              +o3uvw*0.0658*zo3(:)/(1.+(103.6*zo3(:))**3))/zsolar1)
         zto3tu(:)=zto3tu(:)/zto3u(:)
 !
 !     total T = 1-(A(ozon)+R(rayl.))*(1-dcc)-R(cloud)*dcc
@@ -1998,25 +2113,45 @@
 !     downward beam
 !
        zwv(:)=zywvl(:,jlev)
-       ztwv(:)=(1.-2.9*zwv(:)/((1.+141.5*zwv(:))**0.635+5.925*zwv(:))   &
+       ztwv(:)=(1.-h2osww*2.9*zwv(:)                                    &
+     &            /((1.+141.5*zwv(:))**0.635+5.925*zwv(:))              &
      &            /zsolar2)                                             &
      &        /ztwvt(:)
        ztwvt(:)=ztwvt(:)*ztwv(:)
+!
+!     CO2 absorption, downward beam
+!
+       zco2(:)=zyco2l(:,jlev)
+       ztco2(:)=(1.-co2sww*(zca1*LOG(1.+zcb1*zco2(:))                   &
+     &                     +zca2*LOG(1.+zcb2*zco2(:)))/zsolar2)         &
+     &         /ztco2t(:)
+       ztco2t(:)=ztco2t(:)*ztco2(:)
 !
 !     upward scattered beam
 !
        zwv(:)=zywvt(:)+zbetta*(zwvt(:)-zwvl(:,jlev))
        ztwvu(:)=ztwvtu(:)                                               &
-     &         /(1.-2.9*zwv(:)/((1.+141.5*zwv(:))**0.635+5.925*zwv(:))  &
+     &         /(1.-h2osww*2.9*zwv(:)                                   &
+     &            /((1.+141.5*zwv(:))**0.635+5.925*zwv(:))              &
      &            /zsolar2)
        ztwvtu(:)=ztwvtu(:)/ztwvu(:)
+!
+!     CO2 absorption, upward scattered beam
+!
+       zco2(:)=zyco2t(:)+zbetta*(zco2t(:)-zco2l(:,jlev))
+       ztco2u(:)=ztco2tu(:)                                             &
+     &          /(1.-co2sww*(zca1*LOG(1.+zcb1*zco2(:))                  &
+     &                      +zca2*LOG(1.+zcb2*zco2(:)))/zsolar2)
+       ztco2tu(:)=ztco2tu(:)/ztco2u(:)
 !
 !     total T = 1-A(water vapor)*(1.-dcc)-(A(cloud)+R(cloud))*dcc
 !
         ztb2(:,jlev)=1.-(1.-ztwv(:))*(1.-dcc(:,jlev)*nclouds)                   &
+     &              -(1.-ztco2(:))*(1.-dcc(:,jlev)*nclouds)                     &
      &              -(1.-ztcl2(:,jlev))*dcc(:,jlev)*nclouds                     &
                     -(1.-zaert2(:,jlev))*(1.-dcc(:,jlev))*l_aerorad
         ztb2u(:,jlev)=1.-(1.-ztwvu(:))*(1.-dcc(:,jlev)*nclouds)                 &
+     &               -(1.-ztco2u(:))*(1.-dcc(:,jlev)*nclouds)                   &
      &               -(1.-ztcl2s(:,jlev))*dcc(:,jlev)*nclouds                   &
                      -(1.-zaert2s(:,jlev))*(1.-dcc(:,jlev))*l_aerorad
 !
