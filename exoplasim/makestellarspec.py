@@ -6,6 +6,58 @@ import argparse as ag
 
 cc = 299792458.0 #Speed of light
 
+# NumPy 2.0 removed np.trapz in favour of np.trapezoid. Alias rather than
+# calling np.trapz directly so this works on both.
+_trapz = np.trapezoid if hasattr(np, "trapezoid") else np.trapz
+
+# ExoPlaSim resamples onto the model's wavelength grid with np.interp, which is
+# a POINT SAMPLE. A point sample of a line-blanketed photospheric spectrum lands
+# in the continuum more often than in a line core, so it reads high; line
+# density is highest in the blue, so it reads highest there. The shortwave
+# scheme divides its two bands at 0.75 um and weights every two-band surface
+# albedo by the share below the split, so the bias lands directly on the
+# surface energy balance. an independent BT-Settl grid measures it
+# against an independently produced copy of the same BT-Settl grid.
+#
+# The replacement integrates the source across each output bin and divides by
+# the bin width, so the output's own trapezoidal integral reproduces the
+# source's. Bin edges are the ARITHMETIC midpoints of the output grid, because
+# that is the choice under which np.trapz over the output equals the sum of the
+# bin integrals exactly: the trapezoidal weight of an interior sample is
+# already (w[i+1] - w[i-1])/2, which is the width of its midpoint bin.
+
+def _cumulative_flux(wvls,fluxes):
+    """Running trapezoidal integral of ``fluxes`` over ``wvls``, starting at 0."""
+    return np.concatenate(([0.0],np.cumsum(0.5*(fluxes[1:]+fluxes[:-1])
+                                           *np.diff(wvls))))
+
+def _integral_below(x,wvls,fluxes,cumulative):
+    """Exact piecewise-linear integral from wvls[0] up to each x.
+
+    Interpolating ``cumulative`` directly would be linear across a source
+    interval over which the true integral is quadratic; this closes the partial
+    interval with its own trapezoid instead. Outside the source support the
+    integral is clamped, so an output bin beyond the data contributes nothing
+    rather than extrapolating.
+    """
+    x = np.clip(x,wvls[0],wvls[-1])
+    i = np.clip(np.searchsorted(wvls,x,side="right")-1,0,wvls.size-2)
+    fx = fluxes[i]+(fluxes[i+1]-fluxes[i])*(x-wvls[i])/(wvls[i+1]-wvls[i])
+    return cumulative[i]+0.5*(fluxes[i]+fx)*(x-wvls[i])
+
+def _rebin_conserving(wnew,wvls,fluxes):
+    """Resample onto ``wnew`` conserving flux, in place of np.interp.
+
+    Returns the mean flux density in each output bin, the bins tiling ``wnew``
+    at its arithmetic midpoints.
+    """
+    edges = np.empty(wnew.size+1)
+    edges[1:-1] = 0.5*(wnew[:-1]+wnew[1:])
+    edges[0] = wnew[0]-0.5*(wnew[1]-wnew[0])
+    edges[-1] = wnew[-1]+0.5*(wnew[-1]-wnew[-2])
+    cumulative = _cumulative_flux(wvls,fluxes)
+    return np.diff(_integral_below(edges,wvls,fluxes,cumulative))/np.diff(edges)
+
 def readspec(sfile,cgs=False):
     """Read a Phoenix stellar spectrum and return wavelengths, fluxes, and units
     
@@ -104,7 +156,7 @@ def _integrate_trap(x,y):
     return net
 
 def _normalize(wvls,fluxes):
-    netf = np.trapz(fluxes,x=wvls)
+    netf = _trapz(fluxes,x=wvls)
     factor = 1366.941858/netf
     return fluxes*factor
 
@@ -200,15 +252,16 @@ def convert(spectrumfile, name, plot=False, numwavelengths=2048, normalize=False
         plt.plot(w2)
         plt.yscale('log')
         plt.show()
-    f2 = np.interp(w2,w,f)
-    E0 = np.trapz(f,x=w)
-    E1 = np.trapz(f2,x=w2)
+    f2 = _rebin_conserving(w2,w,f)
+    E0 = _trapz(f,x=w)
+    E1 = _trapz(f2,x=w2)
     print(abs(E0-E1)/E0)
+    factor = 1.0
     if norm:
         factor = 1366.941858/E1
         f2*=factor
-        print(np.trapz(f2,x=w2))
-        print(np.trapz(_normalize(w,f),x=w))
+        print(_trapz(f2,x=w2))
+        print(_trapz(_normalize(w,f),x=w))
     #print f2[np.argwhere(w2>40.0)],w[-10:]
     if plot:
         plt.plot(w2,f2)
@@ -218,8 +271,13 @@ def convert(spectrumfile, name, plot=False, numwavelengths=2048, normalize=False
         plt.xlabel("$\lambda$ [$\mu$m]")
         plt.ylabel("$F_\lambda$ [W/m$^2$/$\mu$m]")
         plt.show()
-    wvref = np.loadtxt(Path(__file__).parent.resolve()+"/wvref.txt")
-    f3 = np.interp(wvref,w2,f2)
+    wvref = np.loadtxt(Path(__file__).parent.resolve()/"wvref.txt")
+    # Rebinned from the SOURCE rather than from f2. wvref carries only 41
+    # points between 0.34 and 0.75 um, so resampling the already-resampled
+    # array would reintroduce the sampling bias exactly where it is worst, and
+    # it would throw away resolution beyond 2 um where wvref is the finer grid
+    # of the two. `factor` keeps normalize= meaning what it did.
+    f3 = _rebin_conserving(wvref,w,f)*factor
     writedat(w2,f2/cc,name+"_hr")
     writedat(wvref,f3/cc,name)
     if plot:
@@ -286,15 +344,16 @@ def main():
         plt.plot(w2)
         plt.yscale('log')
         plt.show()
-    f2 = np.interp(w2,w,f)
-    E0 = np.trapz(f,x=w)
-    E1 = np.trapz(f2,x=w2)
+    f2 = _rebin_conserving(w2,w,f)
+    E0 = _trapz(f,x=w)
+    E1 = _trapz(f2,x=w2)
     print(abs(E0-E1)/E0)
+    factor = 1.0
     if norm:
         factor = 1366.941858/E1
         f2*=factor
-        print(np.trapz(f2,x=w2))
-        print(np.trapz(_normalize(w,f),x=w))
+        print(_trapz(f2,x=w2))
+        print(_trapz(_normalize(w,f),x=w))
     #print f2[np.argwhere(w2>40.0)],w[-10:]
     if args.plot:
         plt.plot(w2,f2)
@@ -304,8 +363,13 @@ def main():
         plt.xlabel("$\lambda$ [$\mu$m]")
         plt.ylabel("$F_\lambda$ [W/m$^2$/$\mu$m]")
         plt.show()
-    wvref = np.loadtxt(Path(__file__).parent.resolve()+"/wvref.txt")
-    f3 = np.interp(wvref,w2,f2)
+    wvref = np.loadtxt(Path(__file__).parent.resolve()/"wvref.txt")
+    # Rebinned from the SOURCE rather than from f2. wvref carries only 41
+    # points between 0.34 and 0.75 um, so resampling the already-resampled
+    # array would reintroduce the sampling bias exactly where it is worst, and
+    # it would throw away resolution beyond 2 um where wvref is the finer grid
+    # of the two. `factor` keeps normalize= meaning what it did.
+    f3 = _rebin_conserving(wvref,w,f)*factor
     writedat(w2,f2/cc,name+"_hr")
     writedat(wvref,f3/cc,name)
     if args.plot:

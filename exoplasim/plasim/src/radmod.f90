@@ -175,6 +175,13 @@
       
       real :: wv1(1024) !Wavelengths in meters up to 0.75 microns
       real :: wv2(1024) !Wavelength in meters starting at 0.75 microns
+!     The 5772 K Rayleigh reference is tabulated on the grid BELOW, and wv1/wv2
+!     are overwritten with the spectrum file's wavelengths further down when one
+!     is given. Keeping the reference's own wavelengths here is what makes the
+!     normalisation integrals self-consistent; before this they paired the
+!     reference's values with the file's abscissae.
+      real :: wvg1(1024) !Reference wavelengths below 0.75 microns
+      real :: wvg2(1024) !Reference wavelengths above 0.75 microns
       real :: wvm1(1024) !Wavelengths in microns up to 0.75 microns
       real :: wvm2(1024) !Wavelength in microns starting at 0.75 microns
       real :: bb1(1024) !Planck function for x<0.75 microns
@@ -212,6 +219,8 @@
         enddo
         
         do k=1,1024
+           wvg1(k) = wv1(k)
+           wvg2(k) = wv2(k)
            bbg1(k) = 1.0/wvm1(k) * 1.0/(exp(constg/wv1(k))-1)
            bbg2(k) = 1.0/wvm2(k) * 1.0/(exp(constg/wv2(k))-1)
         enddo
@@ -278,23 +287,23 @@
         do k=1,1023    !Do a trapezoidal integration above and below 0.75 microns
           z1 = z1 + 0.5*(bb1(k)+bb1(k+1))*(wv1(k+1)-wv1(k))
           z2 = z2 + 0.5*(bb2(k)+bb2(k+1))*(wv2(k+1)-wv2(k))
-          zg1 = zg1 + 0.5*(bbg1(k)+bbg1(k+1))*(wv1(k+1)-wv1(k))
-          zg2 = zg2 + 0.5*(bbg2(k)+bbg2(k+1))*(wv2(k+1)-wv2(k))
+          zg1 = zg1 + 0.5*(bbg1(k)+bbg1(k+1))*(wvg1(k+1)-wvg1(k))
+          zg2 = zg2 + 0.5*(bbg2(k)+bbg2(k+1))*(wvg2(k+1)-wvg2(k))
           zcross1 = zcross1 + 0.5*(bb1(k)/((wv1(k)*1.0e6)**4)+bb1(k+1)/((wv1(k+1)*1.0e6)**4)) &
      &                         *(wv1(k+1)-wv1(k))
           zcross2 = zcross2 + 0.5*(bb2(k)/((wv2(k)*1.0e6)**4)+bb2(k+1)/((wv2(k+1)*1.0e6)**4)) &
      &                         *(wv2(k+1)-wv2(k))
-          zgcross1 = zgcross1+0.5*(bbg1(k)/((wv1(k)*1.0e6)**4)+bbg1(k+1)/((wv1(k+1)*1.0e6)**4)) &
-     &                         *(wv1(k+1)-wv1(k))
-          zgcross2 = zgcross2+0.5*(bbg2(k)/((wv2(k)*1.0e6)**4)+bbg2(k+1)/((wv2(k+1)*1.0e6)**4)) &
-     &                         *(wv2(k+1)-wv2(k))
+          zgcross1 = zgcross1+0.5*(bbg1(k)/((wvg1(k)*1.0e6)**4)+bbg1(k+1)/((wvg1(k+1)*1.0e6)**4)) &
+     &                         *(wvg1(k+1)-wvg1(k))
+          zgcross2 = zgcross2+0.5*(bbg2(k)/((wvg2(k)*1.0e6)**4)+bbg2(k+1)/((wvg2(k+1)*1.0e6)**4)) &
+     &                         *(wvg2(k+1)-wvg2(k))
         enddo
         z1 = z1 + 0.5*(bb1(1024)+bb2(1))*(wv2(1)-wv1(1024))
         zcross1 = zcross1+0.5*(bb1(1024)/((wv1(1024)*1.0e6)**4)+bb2(1)/((wv2(1)*1.0e6)**4)) &
      &                         *(wv2(1)-wv1(1024))
-        zg1 = zg1 + 0.5*(bbg1(1024)+bbg2(1))*(wv2(1)-wv1(1024))
-        zgcross1 = zgcross1+0.5*(bbg1(1024)/((wv1(1024)*1.0e6)**4)+bbg2(1)/((wv2(1)*1.0e6)**4)) &
-     &                         *(wv2(1)-wv1(1024))
+        zg1 = zg1 + 0.5*(bbg1(1024)+bbg2(1))*(wvg2(1)-wvg1(1024))
+        zgcross1 = zgcross1+0.5*(bbg1(1024)/((wvg1(1024)*1.0e6)**4)+bbg2(1)/((wvg2(1)*1.0e6)**4)) &
+     &                         *(wvg2(1)-wvg1(1024))
         
         zg = zg1+zg2
         zgcross = zgcross1 + zgcross2
