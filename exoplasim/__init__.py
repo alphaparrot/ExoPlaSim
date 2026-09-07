@@ -742,9 +742,9 @@ class Model(object):
             
             #Run ExoPlaSim
             try:
-                if float(sys.version[:3])>=3.5 and float(sys.version[:3])<3.7:
+                if sys.version_info.minor>=5 and sys.version_info.minor<7:
                     subprocess.run([self._exec+self.executable],shell=True,check=True)
-                elif float(sys.version[:3])>=3.7:
+                elif sys.version_info.minor>=7:
                     subprocess.run([self._exec+self.executable],shell=True,check=True,
                                    capture_output=True)
                 else:
@@ -1045,9 +1045,9 @@ class Model(object):
             
             #Run ExoPlaSim
             try:
-                if float(sys.version[:3])>=3.5 and float(sys.version[:3])<3.7:
+                if sys.version_info.minor>=5 and sys.version_info.minor<7:
                     subprocess.run([self._exec+self.executable],shell=True,check=True)
-                elif float(sys.version[:3])>=3.7:
+                elif sys.version_info.minor>=7:
                     subprocess.run([self._exec+self.executable],shell=True,check=True,
                                    capture_output=True)
                 else:
