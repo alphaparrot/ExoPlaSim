@@ -358,6 +358,8 @@ class Model(object):
                 hyperthreading=True,mpi_opts=None):
         
         global sourcedir
+
+        
         
         #self.burn7 = burn7
         self.mars = mars
@@ -515,27 +517,47 @@ class Model(object):
         
         # Depending on how the user has entered the resolution, set the appropriate number
         # of spectral modes and latitudes
+        CPU_WRONG_MSG = "ExoPlaSim parallelism gives each core a horizontal slice of the planet. This cannot work if the CPU count could cannot divide the latitudinal resolution."
         if resolution=="T21" or resolution=="t21" or resolution==21 or resolution==32:
+            if 32 % ncpus != 0:
+                raise ValueError(CPU_WRONG_MSG)
             self.nsp=21
             self.nlats=32
         elif resolution=="T42" or resolution=="t42" or resolution==42 or resolution==64:
+            if 64 % ncpus != 0:
+                raise ValueError(CPU_WRONG_MSG)
             self.nsp=42
             self.nlats=64
         elif resolution=="T63" or resolution=="t63" or resolution==63 or resolution==96:
+            if 96 % ncpus != 0:
+                raise ValueError(CPU_WRONG_MSG)
+            print("WARNING: This resolution is untested.")
             self.nsp=63
             self.nlats=96
             force991 = True
         elif resolution=="T85" or resolution=="t85" or resolution==85 or resolution==128:
+            if 128 % ncpus != 0:
+                raise ValueError(CPU_WRONG_MSG)
+            print("WARNING: This resolution is untested.")
             self.nsp=85
             self.nlats=128
         elif resolution=="T106" or resolution=="T106" or resolution==106 or resolution==160:
+            if 160 % ncpus != 0:
+                raise ValueError(CPU_WRONG_MSG)
+            print("WARNING: This resolution is untested.")
             self.nsp=106
             self.nlats=160
             force991 = True
         elif resolution=="T127" or resolution=="t127" or resolution==127 or resolution==192:
+            if 192 % ncpus != 0:
+                raise ValueError(CPU_WRONG_MSG)
+            print("WARNING: This resolution is untested.")
             self.nsp=127
             self.nlats=192
         elif resolution=="T170" or resolution=="t170" or resolution==170 or resolution==256:
+            if 256 % ncpus != 0:
+                raise ValueError(CPU_WRONG_MSG)
+            print("WARNING: This resolution is untested.")
             self.nsp=170
             self.nlats=256
         else:
