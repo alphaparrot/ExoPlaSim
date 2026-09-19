@@ -1,0 +1,104 @@
+{
+  "id": "Z1",
+  "title": "Century Earth baseline",
+  "variants": [
+    {
+      "name": "t21_100y",
+      "model": {
+        "resolution": "T21"
+      },
+      "configure": {},
+      "inputs": [
+        "T21/N032_surf_0129.sra",
+        "T21/N032_surf_0169.sra",
+        "T21/N032_surf_0172.sra",
+        "T21/N032_surf_0173.sra",
+        "T21/N032_surf_1730.sra",
+        "T21/N032_surf_0174.sra",
+        "T21/N032_surf_0210.sra",
+        "T21/N032_surf_0212.sra",
+        "T21/N032_surf_0229.sra",
+        "T21/N032_surf_0232.sra"
+      ],
+      "segments": 100,
+      "long_run": true,
+      "namelists": {
+        "plasim_namelist": {
+          "NSTPW": 11520
+        }
+      },
+      "check_codes": [
+        "139",
+        "167",
+        "178",
+        "179"
+      ]
+    },
+    {
+      "name": "t42_100y",
+      "model": {
+        "resolution": "T42"
+      },
+      "configure": {},
+      "inputs": [
+        "T42/N064_surf_0129.sra",
+        "T42/N064_surf_0169.sra",
+        "T42/N064_surf_0172.sra",
+        "T42/N064_surf_0173.sra",
+        "T42/N064_surf_1730.sra",
+        "T42/N064_surf_0174.sra",
+        "T42/N064_surf_0210.sra",
+        "T42/N064_surf_0212.sra",
+        "T42/N064_surf_0229.sra",
+        "T42/N064_surf_0232.sra"
+      ],
+      "segments": 100,
+      "long_run": true,
+      "namelists": {
+        "plasim_namelist": {
+          "NSTPW": 11520
+        }
+      },
+      "check_codes": [
+        "139",
+        "167",
+        "178",
+        "179"
+      ]
+    },
+    {
+      "name": "t63_100y",
+      "model": {
+        "resolution": "T63"
+      },
+      "configure": {
+        "timestep": 30.0
+      },
+      "inputs": [
+        "T63/N096_surf_0129.sra",
+        "T63/N096_surf_0169.sra",
+        "T63/N096_surf_0172.sra",
+        "T63/N096_surf_0173.sra",
+        "T63/N096_surf_1730.sra",
+        "T63/N096_surf_0174.sra",
+        "T63/N096_surf_0210.sra",
+        "T63/N096_surf_0212.sra",
+        "T63/N096_surf_0229.sra",
+        "T63/N096_surf_0232.sra"
+      ],
+      "segments": 100,
+      "long_run": true,
+      "namelists": {
+        "plasim_namelist": {
+          "NSTPW": 17280
+        }
+      },
+      "check_codes": [
+        "139",
+        "167",
+        "178",
+        "179"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "id": "P4",
+  "title": "Orbit and seasons",
+  "variants": [
+    {
+      "name": "fixed_orbit",
+      "configure": {
+        "eccentricity": 0.2,
+        "obliquity": 30.0,
+        "fixedorbit": true
+      },
+      "inputs": [
+        "T21/N032_surf_0129.sra",
+        "T21/N032_surf_0169.sra",
+        "T21/N032_surf_0172.sra",
+        "T21/N032_surf_0173.sra",
+        "T21/N032_surf_1730.sra",
+        "T21/N032_surf_0174.sra",
+        "T21/N032_surf_0210.sra",
+        "T21/N032_surf_0212.sra",
+        "T21/N032_surf_0229.sra",
+        "T21/N032_surf_0232.sra"
+      ],
+      "segments": 1
+    },
+    {
+      "name": "kepler_orbit",
+      "configure": {
+        "eccentricity": 0.2,
+        "obliquity": 30.0,
+        "keplerian": true
+      },
+      "inputs": [
+        "T21/N032_surf_0129.sra",
+        "T21/N032_surf_0169.sra",
+        "T21/N032_surf_0172.sra",
+        "T21/N032_surf_0173.sra",
+        "T21/N032_surf_1730.sra",
+        "T21/N032_surf_0174.sra",
+        "T21/N032_surf_0210.sra",
+        "T21/N032_surf_0212.sra",
+        "T21/N032_surf_0229.sra",
+        "T21/N032_surf_0232.sra"
+      ],
+      "segments": 1
+    }
+  ]
+}

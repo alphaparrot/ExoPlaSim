@@ -1,0 +1,73 @@
+{
+  "id": "A3",
+  "title": "Ozone",
+  "variants": [
+    {
+      "name": "analytic_ozone",
+      "configure": {
+        "ozone": true
+      },
+      "inputs": [
+        "T21/N032_surf_0129.sra",
+        "T21/N032_surf_0169.sra",
+        "T21/N032_surf_0172.sra",
+        "T21/N032_surf_0173.sra",
+        "T21/N032_surf_1730.sra",
+        "T21/N032_surf_0174.sra",
+        "T21/N032_surf_0210.sra",
+        "T21/N032_surf_0212.sra",
+        "T21/N032_surf_0229.sra",
+        "T21/N032_surf_0232.sra"
+      ],
+      "segments": 1,
+      "steps": 320
+    },
+    {
+      "name": "ozone_off",
+      "configure": {
+        "ozone": false
+      },
+      "inputs": [
+        "T21/N032_surf_0129.sra",
+        "T21/N032_surf_0169.sra",
+        "T21/N032_surf_0172.sra",
+        "T21/N032_surf_0173.sra",
+        "T21/N032_surf_1730.sra",
+        "T21/N032_surf_0174.sra",
+        "T21/N032_surf_0210.sra",
+        "T21/N032_surf_0212.sra",
+        "T21/N032_surf_0229.sra",
+        "T21/N032_surf_0232.sra"
+      ],
+      "segments": 1,
+      "steps": 320
+    },
+    {
+      "name": "file_ozone",
+      "configure": {},
+      "inputs": [
+        "T21/N032_surf_0129.sra",
+        "T21/N032_surf_0169.sra",
+        "T21/N032_surf_0172.sra",
+        "T21/N032_surf_0173.sra",
+        "T21/N032_surf_1730.sra",
+        "T21/N032_surf_0174.sra",
+        "T21/N032_surf_0210.sra",
+        "T21/N032_surf_0212.sra",
+        "T21/N032_surf_0229.sra",
+        "T21/N032_surf_0232.sra",
+        "T21/N032_surf_0237.sra"
+      ],
+      "segments": 1,
+      "steps": 320,
+      "namelists": {
+        "radmod_namelist": {
+          "NO3": 2
+        }
+      },
+      "require_diag": [
+        "Read dqo3cl"
+      ]
+    }
+  ]
+}

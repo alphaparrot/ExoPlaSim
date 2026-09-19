@@ -1,0 +1,18 @@
+{
+  "id": "X4",
+  "title": "Storm climatology",
+  "variants": [
+    {
+      "name": "storm_climatology",
+      "configure": {
+        "aquaplanet": true,
+        "stormclim": true
+      },
+      "inputs": [
+        "aqua_T21/N032_surf_0169.sra"
+      ],
+      "segments": 1,
+      "steps": 800
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "id": "D2",
+  "title": "Horizontal resolution and FFT variants",
+  "variants": [
+    {
+      "name": "t21",
+      "configure": {},
+      "inputs": [
+        "T21/N032_surf_0129.sra",
+        "T21/N032_surf_0169.sra",
+        "T21/N032_surf_0172.sra",
+        "T21/N032_surf_0173.sra",
+        "T21/N032_surf_1730.sra",
+        "T21/N032_surf_0174.sra",
+        "T21/N032_surf_0210.sra",
+        "T21/N032_surf_0212.sra",
+        "T21/N032_surf_0229.sra",
+        "T21/N032_surf_0232.sra"
+      ],
+      "segments": 1,
+      "steps": 320
+    },
+    {
+      "name": "t42",
+      "configure": {},
+      "inputs": [
+        "T42/N064_surf_0129.sra",
+        "T42/N064_surf_0169.sra",
+        "T42/N064_surf_0172.sra",
+        "T42/N064_surf_0173.sra",
+        "T42/N064_surf_1730.sra",
+        "T42/N064_surf_0174.sra",
+        "T42/N064_surf_0210.sra",
+        "T42/N064_surf_0212.sra",
+        "T42/N064_surf_0229.sra",
+        "T42/N064_surf_0232.sra"
+      ],
+      "segments": 1,
+      "steps": 320,
+      "model": {
+        "resolution": "T42"
+      }
+    },
+    {
+      "name": "t63_aqua",
+      "configure": {
+        "aquaplanet": true
+      },
+      "inputs": [
+        "aqua_T63/N096_surf_0169.sra"
+      ],
+      "segments": 1,
+      "steps": 320,
+      "model": {
+        "resolution": "T63"
+      }
+    }
+  ]
+}

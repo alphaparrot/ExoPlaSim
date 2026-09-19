@@ -1,0 +1,64 @@
+{
+  "id": "D6",
+  "title": "Numerical damping and filters",
+  "variants": [
+    {
+      "name": "unfiltered",
+      "configure": {},
+      "inputs": [
+        "T21/N032_surf_0129.sra",
+        "T21/N032_surf_0169.sra",
+        "T21/N032_surf_0172.sra",
+        "T21/N032_surf_0173.sra",
+        "T21/N032_surf_1730.sra",
+        "T21/N032_surf_0174.sra",
+        "T21/N032_surf_0210.sra",
+        "T21/N032_surf_0212.sra",
+        "T21/N032_surf_0229.sra",
+        "T21/N032_surf_0232.sra"
+      ],
+      "segments": 1,
+      "steps": 320
+    },
+    {
+      "name": "exponential_filter",
+      "configure": {
+        "physicsfilter": "exp"
+      },
+      "inputs": [
+        "T21/N032_surf_0129.sra",
+        "T21/N032_surf_0169.sra",
+        "T21/N032_surf_0172.sra",
+        "T21/N032_surf_0173.sra",
+        "T21/N032_surf_1730.sra",
+        "T21/N032_surf_0174.sra",
+        "T21/N032_surf_0210.sra",
+        "T21/N032_surf_0212.sra",
+        "T21/N032_surf_0229.sra",
+        "T21/N032_surf_0232.sra"
+      ],
+      "segments": 1,
+      "steps": 320
+    },
+    {
+      "name": "sponge",
+      "configure": {
+        "top_restoretime": 10.0
+      },
+      "inputs": [
+        "T21/N032_surf_0129.sra",
+        "T21/N032_surf_0169.sra",
+        "T21/N032_surf_0172.sra",
+        "T21/N032_surf_0173.sra",
+        "T21/N032_surf_1730.sra",
+        "T21/N032_surf_0174.sra",
+        "T21/N032_surf_0210.sra",
+        "T21/N032_surf_0212.sra",
+        "T21/N032_surf_0229.sra",
+        "T21/N032_surf_0232.sra"
+      ],
+      "segments": 1,
+      "steps": 320
+    }
+  ]
+}

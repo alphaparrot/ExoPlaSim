@@ -1,4 +1,9 @@
 #!/bin/bash
+
+if [ "$(uname -s)" = "Darwin" ] && [ -z "${SDKROOT:-}" ]; then
+    SDKROOT=$(xcrun --show-sdk-path) || exit 1
+    export SDKROOT
+fi
 #
 #               EXOPLASIM COMPILATION SCRIPT
 #
@@ -71,7 +76,7 @@ nopt=0
 years=1
 nmars=0
 
-while getopts "p:r:v:n:O:t:dhm" opt; do
+while getopts "p:r:v:n:O:t:dhmf" opt; do
     case $opt in
         p)
             case $OPTARG in
@@ -245,9 +250,9 @@ echo "      parameter(NPRO_ATM = "$ncpus") ">>resmod.f90
 echo "      end module resmod ">>resmod.f90
 echo " ">>resmod.f90
 
-rm plasim.x
-rm ../bin/$executable
-rm ../run/$executable
+rm -f plasim.x
+rm -f ../bin/$executable
+rm -f ../run/$executable
 cp -p ../src/* .
 
 if [ "$ncpus" -gt 1 ]
@@ -283,11 +288,11 @@ export OCEANCOUP=cpl_stub
 export FFTMOD=$fftopt
 #cat makefile
 
-make -e
-./most_snow_build$prec
-./most_ice_build$prec
-cp plasim.x ../bin/$executable
-cp ../bin/$executable ../run/
+make -e || exit 1
+./most_snow_build$prec || exit 1
+./most_ice_build$prec || exit 1
+cp plasim.x ../bin/$executable || exit 1
+cp ../bin/$executable ../run/ || exit 1
 cd ../../
 
 (($nmars)) && cp plasim/dat/T"${resolution[@]:1}"_mars/* plasim/run/ || cp plasim/dat/T"${resolution[@]:1}"/* plasim/run/
@@ -333,4 +338,3 @@ echo "   [ -e plasim_status ] && cp plasim_status plasim_restart ">>plasim/run/m
 echo "   [ -e plasim_status ] && mv plasim_status \$RESTNAME     ">>plasim/run/most_plasim_run
 echo "   [ -e restart_snow ] && mv restart_snow \$SNOWNAME       ">>plasim/run/most_plasim_run
 echo "done                                                       ">>plasim/run/most_plasim_run
-

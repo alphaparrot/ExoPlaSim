@@ -1,0 +1,136 @@
+{
+  "id": "Z2",
+  "title": "Coupled vegetation, sea ice and glaciers",
+  "variants": [
+    {
+      "name": "t21_10y",
+      "model": {
+        "resolution": "T21"
+      },
+      "configure": {
+        "vegetation": 2,
+        "seaice": true,
+        "glaciers": {
+          "toggle": true,
+          "mindepth": 2.0,
+          "initialh": -1.0
+        }
+      },
+      "inputs": [
+        "T21/N032_surf_0129.sra",
+        "T21/N032_surf_0169.sra",
+        "T21/N032_surf_0172.sra",
+        "T21/N032_surf_0173.sra",
+        "T21/N032_surf_1730.sra",
+        "T21/N032_surf_0174.sra",
+        "T21/N032_surf_0210.sra",
+        "T21/N032_surf_0212.sra",
+        "T21/N032_surf_0229.sra",
+        "T21/N032_surf_0232.sra"
+      ],
+      "segments": 10,
+      "long_run": true,
+      "namelists": {
+        "plasim_namelist": {
+          "NSTPW": 11520
+        }
+      },
+      "check_codes": [
+        "139",
+        "298",
+        "304",
+        "305",
+        "232",
+        "267",
+        "268"
+      ]
+    },
+    {
+      "name": "t42_10y",
+      "model": {
+        "resolution": "T42"
+      },
+      "configure": {
+        "vegetation": 2,
+        "seaice": true,
+        "glaciers": {
+          "toggle": true,
+          "mindepth": 2.0,
+          "initialh": -1.0
+        }
+      },
+      "inputs": [
+        "T42/N064_surf_0129.sra",
+        "T42/N064_surf_0169.sra",
+        "T42/N064_surf_0172.sra",
+        "T42/N064_surf_0173.sra",
+        "T42/N064_surf_1730.sra",
+        "T42/N064_surf_0174.sra",
+        "T42/N064_surf_0210.sra",
+        "T42/N064_surf_0212.sra",
+        "T42/N064_surf_0229.sra",
+        "T42/N064_surf_0232.sra"
+      ],
+      "segments": 10,
+      "long_run": true,
+      "namelists": {
+        "plasim_namelist": {
+          "NSTPW": 11520
+        }
+      },
+      "check_codes": [
+        "139",
+        "298",
+        "304",
+        "305",
+        "232",
+        "267",
+        "268"
+      ]
+    },
+    {
+      "name": "t63_10y",
+      "model": {
+        "resolution": "T63"
+      },
+      "configure": {
+        "vegetation": 2,
+        "seaice": true,
+        "glaciers": {
+          "toggle": true,
+          "mindepth": 2.0,
+          "initialh": -1.0
+        },
+        "timestep": 30.0
+      },
+      "inputs": [
+        "T63/N096_surf_0129.sra",
+        "T63/N096_surf_0169.sra",
+        "T63/N096_surf_0172.sra",
+        "T63/N096_surf_0173.sra",
+        "T63/N096_surf_1730.sra",
+        "T63/N096_surf_0174.sra",
+        "T63/N096_surf_0210.sra",
+        "T63/N096_surf_0212.sra",
+        "T63/N096_surf_0229.sra",
+        "T63/N096_surf_0232.sra"
+      ],
+      "segments": 10,
+      "long_run": true,
+      "namelists": {
+        "plasim_namelist": {
+          "NSTPW": 17280
+        }
+      },
+      "check_codes": [
+        "139",
+        "298",
+        "304",
+        "305",
+        "232",
+        "267",
+        "268"
+      ]
+    }
+  ]
+}

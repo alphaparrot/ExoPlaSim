@@ -1,0 +1,6 @@
+{
+  "id": "X1",
+  "title": "Passive tracer transport",
+  "blocked_reason": "The compiled solver sets NTRACE=1 and reserves it for humidity; a separate passive tracer cannot be initialized or checked without a solver change.",
+  "variants": []
+}

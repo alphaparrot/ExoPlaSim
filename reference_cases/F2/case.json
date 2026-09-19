@@ -1,0 +1,39 @@
+{
+  "id": "F2",
+  "title": "Four-byte seasonal orbit stability",
+  "variants": [
+    {
+      "name": "t42_f32_30y",
+      "model": {
+        "resolution": "T42",
+        "precision": 4
+      },
+      "configure": {
+        "obliquity": 45.0,
+        "eccentricity": 0.1,
+        "keplerian": true
+      },
+      "inputs": [
+        "T42/N064_surf_0129.sra",
+        "T42/N064_surf_0169.sra",
+        "T42/N064_surf_0172.sra",
+        "T42/N064_surf_0173.sra",
+        "T42/N064_surf_1730.sra",
+        "T42/N064_surf_0174.sra",
+        "T42/N064_surf_0210.sra",
+        "T42/N064_surf_0212.sra",
+        "T42/N064_surf_0229.sra",
+        "T42/N064_surf_0232.sra"
+      ],
+      "segments": 30,
+      "long_run": true,
+      "crashtolerant": false,
+      "namelists": {
+        "plasim_namelist": {
+          "NSTPW": 2880
+        }
+      },
+      "check_codes": ["139", "167", "142", "143", "144", "178", "179"]
+    }
+  ]
+}

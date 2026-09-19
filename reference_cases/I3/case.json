@@ -1,0 +1,51 @@
+{
+  "id": "I3",
+  "title": "Snapshots and high-cadence output",
+  "variants": [
+    {
+      "name": "snapshots",
+      "configure": {
+        "snapshots": 20
+      },
+      "inputs": [
+        "T21/N032_surf_0129.sra",
+        "T21/N032_surf_0169.sra",
+        "T21/N032_surf_0172.sra",
+        "T21/N032_surf_0173.sra",
+        "T21/N032_surf_1730.sra",
+        "T21/N032_surf_0174.sra",
+        "T21/N032_surf_0210.sra",
+        "T21/N032_surf_0212.sra",
+        "T21/N032_surf_0229.sra",
+        "T21/N032_surf_0232.sra"
+      ],
+      "segments": 1,
+      "steps": 320
+    },
+    {
+      "name": "high_cadence",
+      "configure": {
+        "highcadence": {
+          "toggle": 1,
+          "start": 20,
+          "end": 80,
+          "interval": 10
+        }
+      },
+      "inputs": [
+        "T21/N032_surf_0129.sra",
+        "T21/N032_surf_0169.sra",
+        "T21/N032_surf_0172.sra",
+        "T21/N032_surf_0173.sra",
+        "T21/N032_surf_1730.sra",
+        "T21/N032_surf_0174.sra",
+        "T21/N032_surf_0210.sra",
+        "T21/N032_surf_0212.sra",
+        "T21/N032_surf_0229.sra",
+        "T21/N032_surf_0232.sra"
+      ],
+      "segments": 1,
+      "steps": 320
+    }
+  ]
+}

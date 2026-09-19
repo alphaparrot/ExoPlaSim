@@ -8,6 +8,11 @@ Final maintenance release for 3.x. Includes numerous quality-of-life improvement
 EXOPLASIM
 =========
 
+Repository guides: [build and run](todo/BUILD_AND_RUN.md),
+[model architecture](todo/MODEL_ARCHITECTURE.md),
+[cleanup candidates](todo/REPOSITORY_CLEANUP.md), and
+[GPU feasibility](todo/GPU_FEASIBILITY.md).
+
 ![Two rows of planets, progressing from yellow to blue from top left to bottom right. The top row appears to represent tidally-locked planets, while the bottom row appears to represent Earth-like planets.](mixplanets.png "Two rows of planets, progressing from yellow to blue from top left to bottom right. The top row appears to represent tidally-locked planets, while the bottom row appears to represent Earth-like planets.")
 *A range of planets modeled by ExoPlaSim, and postprocessed with SBDART. The top row consists of tidally-locked aquaplanets at T21 orbiting stars ranging from 2500 K to 4000 K, with orbital periods increasing with stellar mass. The bottom row consists of aquaplanets with 24-hour rotation at T42, orbiting stars ranging from 4000 K to 8000 K.*
 

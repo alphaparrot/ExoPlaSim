@@ -1,0 +1,18 @@
+{
+  "id": "P6",
+  "title": "Mars build, if retained",
+  "variants": [
+    {
+      "name": "mars",
+      "configure": {},
+      "inputs": [
+        "T21_mars/N032_surf_0129.sra"
+      ],
+      "segments": 1,
+      "steps": 320,
+      "model": {
+        "mars": true
+      }
+    }
+  ]
+}

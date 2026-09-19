@@ -33,7 +33,7 @@ classifiers = [
   "Programming Language :: Python :: 3.12"
   ]  
   
-[projection.optional-dependencies]
+[project.optional-dependencies]
 h5 = ['h5py',]
 nc = ['netCDF4',]
 mpl = ['matplotlib','basemap']

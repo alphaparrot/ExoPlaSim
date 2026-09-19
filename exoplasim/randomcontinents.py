@@ -116,7 +116,7 @@ def generate(name="Alderaan",continents=7,landfraction=0.29,maxz=10.0,nlats=32,h
 
     if not nlats:
         import netCDF4 as nc
-        dims = nc.Dataset("/".join(__file__.split("/")[:-1])+"T21.nc","r")
+        dims = nc.Dataset(Path(__file__).resolve().parent / "T21.nc", "r")
     
         lts = dims.variables['lat'][:]
         lns = dims.variables['lon'][:]
@@ -468,9 +468,9 @@ def generate(name="Alderaan",continents=7,landfraction=0.29,maxz=10.0,nlats=32,h
                         raise err
                     nutop[jlat,jlon] = 0.2*topo[jlat,jlon]+np.nanmean([c1,c2,c3,c4,c5,c6,c7,c8])*0.8
             topo[:] = nutop[:]
-        topospline = interpolate.interp2d(lnsz,ltsz[::-1],(topo[::-1,:]),kind='linear')
-        dtopo = (topospline(lns,lts[::-1]))
-        dtopo = dtopo[::-1,:]
+        topospline = interpolate.RectBivariateSpline(
+            lnsz, ltsz[::-1], topo[::-1, :].T, kx=1, ky=1)
+        dtopo = topospline(lns, lts[::-1]).T[::-1, :]
         dtopo[np.isnan(geopotential)] = 0.0
         
         writeSRA(name,129,dtopo,NLAT,NLON)
@@ -557,7 +557,7 @@ def main():
     parser.add_argument("-f","--landfraction",type=float,default=0.29,help="Land fraction")
     parser.add_argument("-n","--name",default="Alderaan",help="Assign a name for the planet")
     parser.add_argument("-m","--maxz",default=10.0,type=float,help="Maximum elevation in km assuming Earth gravity")
-    if os.path.exists("T21.nc"):
+    if (Path(__file__).resolve().parent / "T21.nc").exists():
         parser.add_argument("--nlats",type=int,help="Number of latitudes (evenly-spaced)--will also set longitudes (twice as many). If unset, PlaSim latitudes and longitudes will be used (T21 resolution; requires netCDF4)")
     else:
         parser.add_argument("--nlats",default=32,type=int,help="Number of latitudes (evenly-spaced)--will also set longitudes (twice as many).")
@@ -569,7 +569,7 @@ def main():
     output = generate(name=args.name,continents=args.continents,
                                 landfraction=args.landfraction,maxz=args.maxz,
                                 nlats=args.nlats,hemispherelongitude=args.hemispherelongitude,
-                                topo=args.topo,orthographic=args.orthographic, plot=args.plot)
+                                ntopo=args.topo,orthographic=args.orthographic, plot=args.plot)
     
         
 if __name__=="__main__" and (Path(sys.argv[0]).name!="sphinx-build" and 

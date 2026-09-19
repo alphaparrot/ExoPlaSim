@@ -1,0 +1,43 @@
+{
+  "id": "P3",
+  "title": "Rotation and synchronous forcing",
+  "variants": [
+    {
+      "name": "normal",
+      "configure": {
+        "aquaplanet": true
+      },
+      "inputs": [
+        "aqua_T21/N032_surf_0169.sra"
+      ],
+      "segments": 1,
+      "steps": 320
+    },
+    {
+      "name": "synchronous",
+      "configure": {
+        "aquaplanet": true,
+        "synchronous": true,
+        "substellarlon": 180.0
+      },
+      "inputs": [
+        "aqua_T21/N032_surf_0169.sra"
+      ],
+      "segments": 1,
+      "steps": 320
+    },
+    {
+      "name": "moving_substellar",
+      "configure": {
+        "aquaplanet": true,
+        "synchronous": true,
+        "desync": 0.05
+      },
+      "inputs": [
+        "aqua_T21/N032_surf_0169.sra"
+      ],
+      "segments": 1,
+      "steps": 320
+    }
+  ]
+}

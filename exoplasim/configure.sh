@@ -1,5 +1,14 @@
 #!/bin/bash
 
+# Homebrew GCC may have been built against an SDK that is no longer installed.
+# Use the SDK selected by Xcode for both the compiler checks and later builds.
+if [ "$(uname -s)" = "Darwin" ] && [ -z "${SDKROOT:-}" ]; then
+    SDKROOT=$(xcrun --show-sdk-path) || exit 1
+    export SDKROOT
+fi
+
+mkdir -p plasim/bld
+
 helptest=$(cat <<-END
                EXOPLASIM CONFIGURATION SCRIPT
                
@@ -339,7 +348,7 @@ HOSTNAME=`hostname`
 export HOSTNAME
 MOSTARCH=`uname -a`
 export MOSTARCH
-make -e -f makecheck
+make -e -f makecheck || exit 1
 ./f90check.x
 ./cc_check.x
 echo >> most_info.txt "FORTRAN Compiler: $MOST_F90"

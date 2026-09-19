@@ -137,20 +137,20 @@ def sysconfigure():
         pyversion = ".".join(sys.version.split(".")[:2])
         #for pyfftfile in glob.glob(os.path.join(sourcedir,"pyfft*.so")):
             #os.remove(pyfftfile)
-        if float(pyversion)>=3.5 and float(pyversion)<3.7:
+        if (3, 5) <= sys.version_info[:2] < (3, 7):
             print("./configure -v %s"%(pyversion))
             result = subprocess.run(["./configure.sh -v %s"%(pyversion)],shell=True,check=True,
                                     stdout=subprocess.PIPE,stderr=subprocess.PIPE,
                                     universal_newlines=True)
             print(result.stdout)
             print(result.stderr)
-        elif float(pyversion)>=3.7:
+        elif sys.version_info[:2] >= (3, 7):
             print("./configure -v %s"%(pyversion))
             result = subprocess.run(["./configure.sh -v %s"%(pyversion)],shell=True,check=True,
                             capture_output=True,universal_newlines=True)
             print(result.stdout)
             print(result.stderr)
-        elif float(pyversion)<3.5 and float(pyversion)>=3.0:
+        elif (3, 0) <= sys.version_info[:2] < (3, 5):
             print("./configure -v %s"%(pyversion))
             os.system("./configure.sh -v %s"%(pyversion))
             result=""
@@ -742,9 +742,9 @@ class Model(object):
             
             #Run ExoPlaSim
             try:
-                if float(sys.version[:3])>=3.5 and float(sys.version[:3])<3.7:
+                if (3, 5) <= sys.version_info[:2] < (3, 7):
                     subprocess.run([self._exec+self.executable],shell=True,check=True)
-                elif float(sys.version[:3])>=3.7:
+                elif sys.version_info[:2] >= (3, 7):
                     subprocess.run([self._exec+self.executable],shell=True,check=True,
                                    capture_output=True)
                 else:
@@ -1045,9 +1045,9 @@ class Model(object):
             
             #Run ExoPlaSim
             try:
-                if float(sys.version[:3])>=3.5 and float(sys.version[:3])<3.7:
+                if (3, 5) <= sys.version_info[:2] < (3, 7):
                     subprocess.run([self._exec+self.executable],shell=True,check=True)
-                elif float(sys.version[:3])>=3.7:
+                elif sys.version_info[:2] >= (3, 7):
                     subprocess.run([self._exec+self.executable],shell=True,check=True,
                                    capture_output=True)
                 else:

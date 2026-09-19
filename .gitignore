@@ -1,0 +1,57 @@
+# Local planning notes
+/todo/
+
+# OS and editor metadata
+.DS_Store
+*~
+.idea/
+.vscode/
+
+# Python caches, environments, and packaging output
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+.coverage
+htmlcov/
+.venv/
+venv/
+/build/
+/dist/
+/docs/_build/
+*.egg-info/
+
+# Native compiler output
+*.o
+*.mod
+*.so
+*.dylib
+*.a
+*.ptx
+*.cubin
+*.fatbin
+core
+core.*
+
+# Files produced by ExoPlaSim's configure and compile scripts
+/exoplasim/F90_INTEGER
+/exoplasim/F90_REAL
+/exoplasim/cc_check.x
+/exoplasim/f90check.x
+/exoplasim/firstrun
+/exoplasim/most_compiler
+/exoplasim/most_compiler_mpi
+/exoplasim/most_debug_options
+/exoplasim/most_info.txt
+/exoplasim/most_precision_options
+/exoplasim/most_precision_optionsx
+/exoplasim/*/bld/
+/exoplasim/*/bin/
+/exoplasim/plasim/run/most_plasim_*.x
+
+# Generated reference-case runs and large model output
+/reference_cases/results/
+/reference_cases/*/reference/
+/reference_cases/*/run_*/

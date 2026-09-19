@@ -1,0 +1,39 @@
+{
+  "id": "X5",
+  "title": "Storm-triggered capture",
+  "variants": [
+    {
+      "name": "permissive_capture",
+      "configure": {
+        "aquaplanet": true,
+        "stormclim": true,
+        "nstorms": 1,
+        "stormcapture": {
+          "VITHRESH": 0.0,
+          "GPITHRESH": 0.0,
+          "VMXTHRESH": 0.0,
+          "LAVTHRESH": 0.0,
+          "VRMTHRESH": 0.0,
+          "MINSURFTEMP": 250.0,
+          "MAXSURFTEMP": 400.0,
+          "WINDTHRESH": 0.0,
+          "SWINDTHRESH": 0.0,
+          "SIZETHRESH": 1,
+          "ENDTHRESH": 0,
+          "MINSTORMLEN": 4,
+          "MAXSTORMLEN": 128,
+          "NKTRIGGER": 0,
+          "toggle": 1
+        }
+      },
+      "inputs": [
+        "aqua_T21/N032_surf_0169.sra"
+      ],
+      "segments": 1,
+      "steps": 800,
+      "require_diag": [
+        "HC STORM CAPTURE step"
+      ]
+    }
+  ]
+}

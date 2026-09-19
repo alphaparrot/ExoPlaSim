@@ -1,0 +1,60 @@
+{
+  "id": "X6",
+  "title": "Nudging/forcing",
+  "variants": [
+    {
+      "name": "temperature_nudge",
+      "configure": {},
+      "inputs": [
+        "T21/N032_surf_0129.sra",
+        "T21/N032_surf_0169.sra",
+        "T21/N032_surf_0172.sra",
+        "T21/N032_surf_0173.sra",
+        "T21/N032_surf_1730.sra",
+        "T21/N032_surf_0174.sra",
+        "T21/N032_surf_0210.sra",
+        "T21/N032_surf_0212.sra",
+        "T21/N032_surf_0229.sra",
+        "T21/N032_surf_0232.sra",
+        "T21/N032_surf_0130.sra"
+      ],
+      "segments": 1,
+      "steps": 320,
+      "namelists": {
+        "miscmod_namelist": {
+          "NUDGE": 1
+        }
+      },
+      "require_diag": [
+        "Read dtnudge"
+      ]
+    },
+    {
+      "name": "flux_nudge",
+      "configure": {},
+      "inputs": [
+        "T21/N032_surf_0129.sra",
+        "T21/N032_surf_0169.sra",
+        "T21/N032_surf_0172.sra",
+        "T21/N032_surf_0173.sra",
+        "T21/N032_surf_1730.sra",
+        "T21/N032_surf_0174.sra",
+        "T21/N032_surf_0210.sra",
+        "T21/N032_surf_0212.sra",
+        "T21/N032_surf_0229.sra",
+        "T21/N032_surf_0232.sra",
+        "T21/N032_surf_0022.sra"
+      ],
+      "segments": 1,
+      "steps": 320,
+      "namelists": {
+        "miscmod_namelist": {
+          "NUDGE": 2
+        }
+      },
+      "require_diag": [
+        "Read dfnudge"
+      ]
+    }
+  ]
+}
