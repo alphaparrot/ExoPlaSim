@@ -70,8 +70,12 @@
                                   
       integer :: npbroaden = 1    ! Should pressure broadening depend on surface pressure (1/0)
       integer :: nfixed  = 0      ! Switch for fixed zenith angle (0/1=no/yes)
+      integer :: allowlibrate = 1 ! Switch for libration of substellar point
       real    :: slowdown = 1.0   ! Factor by which to change diurnal insolation cycle
       real    :: desync = 0.0     ! Degrees per minute by which substellar point drifts (+/-)
+      real    :: daysperorb = 0.0 ! Solar days per orbit if synchronous
+	real    :: syncdays = 0.0   ! Solar days completed if synchronous
+	real    :: lonoffset = 0.0  ! Current offset of substellar point
       
       
       real    :: minwavel = 316.036116751 ! Minimum wavelength to use when computing spectra [nm]
@@ -604,7 +608,7 @@
 !**   0) define namelist
 !
       namelist/radmod_nl/ndcycle,ncstsol,solclat,solcdec,no3,co2        &
-     &               ,iyrbp,nswr,nlwr,nfixed,slowdown,nradice,npbroaden,desync    &
+     &               ,iyrbp,nswr,nlwr,nfixed,slowdown,nradice,npbroaden,desync,daysperorb,allowlibrate    &
      &               ,a0o3,a1o3,aco3,bo3,co3,toffo3,o3scale,newrsc,necham,necham6   &
      &               ,nsol,nclouds,nswrcl,nrscat,rcl1,rcl2,acl2,clgray,tpofmt   &
      &               ,acllwr,tswr1,tswr2,tswr3,th2oc,dawn,starbbtemp,nstartemp  &
@@ -738,7 +742,10 @@
          minwavel = minwavel*1.0e-9
          
          oldfixedlon = fixedlon
-         if (nrestart > 0.) call get_restart_real('fixedlon',fixedlon)
+         if (nrestart > 0.) then
+		call get_restart_real('fixedlon',fixedlon)
+		if (daysperorb /= 0.0) call get_restart_real('syncdays',syncdays)
+	   endif
          if ((fixedlon .ne. oldfixedlon) .and. (desync .eq. 0.0)) fixedlon=oldfixedlon
          
          if ((necham.eq.1).and.(necham6.eq.1)) necham=0 !necham6 overrides necham
@@ -752,6 +759,8 @@
       call mpbci(nfixed)
       call mpbcr(fixedlon)
       call mpbcr(desync)
+      call mpbcr(daysperorb)
+	call mpbcr(syncdays)
       call mpbcr(slowdown)
       call mpbcr(a0o3)
       call mpbcr(a1o3)
@@ -786,6 +795,7 @@
       call mpbci(necham6)
       call mpbci(nradice)
       call mpbci(npbroaden)
+      call mpbci(allowlibrate)
 
       call mpbcr(starbbtemp)
       call mpbci(nstartemp)
@@ -1313,7 +1323,10 @@
 !
 !     no PUMA variables are used
 !
-      if (mypid==NROOT) call put_restart_real('fixedlon',fixedlon)
+      if (mypid==NROOT) then
+	      call put_restart_real('fixedlon',fixedlon)
+		call put_restart_real('syncdays',syncdays)
+	endif
       call mpputgp('zsolars',zsolars,2,1)
       
 
@@ -1395,11 +1408,20 @@
       zmins = ihou * 60 + imin
       
       if (nfixed==1) then
+        if (daysperorb==0.0) then
+		syncdays = 0.0
+	  else
+		if (abs(zcday * daysperorb) < abs(mod(syncdays,daysperorb))) syncdays = syncdays + daysperorb/n_steps_per_year	!ensures partial rotations carry across years
+		syncdays = syncdays - mod(syncdays,daysperorb) + zcday * daysperorb
+	  endif
+	  call mpbcr(syncdays)
+	  lonoffset = mod(syncdays,1.0) * (-360.0)
+	  if (allowlibrate > 0) lonoffset = lonoffset + (orbnu*180.0/PI - (zcday*360.0 + meananom0))
         if (mypid==NROOT) fixedlon = fixedlon + desync*mpstep
         call mpbcr(fixedlon)
         zrtim = TWOPI
-        zmins = 1.0 - (fixedlon/360.)  !Think about how to fix this: there's a dep
-        zdecl = obliqr                 !on rotspd. Maybe zrtim = TWOPI/1440.0?
+        zmins = 1.0 - ((fixedlon + lonoffset)/360.)  !Think about how to fix this: there's a dep
+        if (allowlibrate == 0) zdecl = obliqr        !on rotspd. Maybe zrtim = TWOPI/1440.0?
       endif
       jhor = 0
       if (ncstsol==0) then
@@ -1407,7 +1429,7 @@
         do jlon = 0 , NLON-1
          jhor = jhor + 1
          zhangle = zmins * zrtim + jlon * zrlon - PI
-         if (ngenkeplerian==1) zhangle = zhangle - rasc
+         if (ngenkeplerian==1 .AND. nfixed==0) zhangle = zhangle - rasc
          if (zhangle < -PI) zhangle = zhangle + TWOPI
          if (zhangle > PI) zhangle = zhangle - TWOPI
          
@@ -2468,7 +2490,7 @@
 !     will work with reasonable accuracy for any bound orbit (eccen<1.0).
 
       subroutine gen_orb_decl(yearfraction, eccen, obliqr, mvelpp, trueanomaly, lamb, rasc, zdecl, eccf)
-      use radmod, only : TWOPI, meananom0r, nfixed
+      use radmod, only : TWOPI, meananom0r, nfixed, allowlibrate
       !Inputs
       real :: eccen        ! Eccentricity
       real :: yearfraction ! Elapsed fraction of the year 
@@ -2488,7 +2510,7 @@
       real :: lamb         ! True anomaly - longitude of vernal equinox
       real :: rasc         ! Right ascension
       
-      if (nfixed > 0) then
+      if (nfixed > 0 .AND. allowlibrate==0) then
           trueanomaly = 0.
           eccf = 1.
       else
