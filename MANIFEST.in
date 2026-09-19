@@ -7,9 +7,6 @@ prune exoplasim/Cat_UG_00
 prune exoplasim/glacier
 prune exoplasim/images
 prune exoplasim/octave
-prune exoplasim/Plasim_Report
-prune exoplasim/Plasim_RM_16
-prune exoplasim/Plasim_UG_16
 prune exoplasim/puma
 prune exoplasim/Puma_UG_17
 prune exoplasim/ug_cat_00

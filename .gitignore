@@ -4,6 +4,8 @@
 # OS and editor metadata
 .DS_Store
 *~
+*.bak
+*.backup
 .idea/
 .vscode/
 
@@ -22,6 +24,18 @@ venv/
 /dist/
 /docs/_build/
 *.egg-info/
+
+# Generated documentation
+/exoplasim/puma/dox/
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.synctex.gz
+*.toc
+octave-workspace
 
 # Native compiler output
 *.o
