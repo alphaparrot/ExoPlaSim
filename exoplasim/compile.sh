@@ -210,7 +210,12 @@ executable="most_plasim_"$resolution"_l"$levels"_p"$ncpus".x"
 
 echo "Writing resmod.f90....."
 
-cd plasim/bld/
+# `plasim/bld` is a build directory and is not tracked, so on a fresh clone
+# it does not exist. Without the guard below the `cd` fails, execution
+# continues because this script does not set -e, and the `rm -rf *` on the
+# next line then runs in the PACKAGE ROOT and deletes the source tree.
+mkdir -p plasim/bld plasim/bin
+cd plasim/bld/ || { echo "compile.sh: cannot enter plasim/bld" >&2; exit 1; }
 rm -rf *
 
 
