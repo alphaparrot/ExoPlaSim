@@ -141,7 +141,7 @@
       real (kind=8) :: zgw(NLAT)
       real :: zgw2(NLON,NLAT)
       real :: zls(NLON*NLAT)
-      integer :: nlem_oce = NLEV_OCE - 1 
+      integer, parameter :: nlem_oce = NLEV_OCE - 1 
       character (*) :: oceanmod_namelist
       character (*) :: ocean_output
 !
@@ -1225,7 +1225,7 @@
 !     compute new sst due to vertical diffusion
 !
       use oceanmod
-      integer :: nlem_oce = NLEV_OCE - 1
+      integer, parameter :: nlem_oce = NLEV_OCE - 1
 !
 !     note: bounds of local arrays due to compiler, only 1:nlem_oce used
 !

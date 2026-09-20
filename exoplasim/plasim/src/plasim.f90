@@ -1529,7 +1529,8 @@ plasimversion = "https://github.com/Edilbert/PLASIM/ : 15-Dec-2015"
       elseif ((neqsig==5) .and. (NLEV .gt. 10)) then
        
        !Bottom atmosphere (PlaSim's normal domain)
-       do jlev=NLEV-10,NLEV
+       do jlev=max(NLEV-10,1),NLEV  !max() so the bound is provably >= 1; the
+         !branch already requires NLEV > 10, so this never changes the range
          zsk=REAL(jlev-(NLEV-9+1))/10.0  !As if it was a 10-layer atmosphere
          sigmah(jlev)=0.75*zsk+1.75*zsk**3-1.5*zsk**4
        enddo
