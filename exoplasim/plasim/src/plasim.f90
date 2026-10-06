@@ -215,6 +215,25 @@ plasimversion = "https://github.com/Edilbert/PLASIM/ : 15-Dec-2015"
       call mpbci(nveg    ) ! vegetation switch
       call mpbci(noutput ) ! write data switch
       call mpbci(nafter  ) ! write data interval
+!
+!     nlowio and nstpw are read from plasim_nl on NROOT only, exactly like every
+!     key broadcast around here, but unlike them they were never broadcast at
+!     all. Every non-root task therefore kept the COMPILED DEFAULT nlowio = 1
+!     (plasimmod.f90) while NROOT held whatever the namelist said. That is
+!     invisible while the namelist also says 1, and it DEADLOCKS the model when
+!     it says 0: the `if (nlowio .eq. 0)` blocks in outmod.f90 call writegp and
+!     writesp, and writegp opens with the COLLECTIVE mpgagp. NROOT enters that
+!     gather and no other task does, so the tasks desynchronise and the run sits
+!     in mismatched collectives -- 100% CPU, no system time, no output past the
+!     40-byte header, forever.
+!
+!     nafter is broadcast on the line above and is derived from both of these on
+!     NROOT, so the output CADENCE was always consistent across tasks. Only the
+!     branch that decides WHICH fields to write was not, which is why this hid
+!     for as long as the namelist agreed with the default.
+!
+      call mpbci(nlowio  ) ! low-I/O accumulation mode (0/1)
+      call mpbci(nstpw   ) ! timesteps between writes
       call mpbci(nwpd    ) ! number of writes per day
       call mpbci(nsnapshot) ! Switch for writing snapshots
       call mpbci(nstps   ) ! number of steps per snapshot
@@ -854,12 +873,40 @@ plasimversion = "https://github.com/Edilbert/PLASIM/ : 15-Dec-2015"
       call mpputgp('tempmax'     ,tempmax ,NHOR,1) 
       call mpputgp('tempmin'     ,tempmin ,NHOR,1) 
                                            
-      call mpputgp('aaso'        ,aaso    ,NESP,1)        
-      call mpputgp('aasp'        ,aasp    ,NESP,1)        
-      call mpputgp('aast'        ,aast    ,NESP,NLEV)   
-      call mpputgp('aasqout'     ,aasqout ,NESP,NLEV)
-      call mpputgp('aasd'        ,aasd    ,NESP,NLEV)   
-      call mpputgp('aasz'        ,aasz    ,NESP,NLEV)   
+!     The six accumulators below are SPECTRAL (NESP,NLEV) and are meaningful
+!     only on NROOT, which is the only task that writes them out. They used to
+!     go through mpputgp/mpgetgp, which move NHOR elements per level and so
+!     transferred NHOR*NLEV of NESP*NLEV values: levels beyond the first
+!     NHOR*NLEV/NESP came back as zero while naccuout came back whole, and the
+!     first record of every model call was scaled by (nstpw-1)/naccuout on
+!     those levels. Save them the way sz/sd/st/sp/so are saved, and under new
+!     names so that a pre-patch restart is recognised rather than misread.
+      if (mypid == NROOT) then
+         call put_restart_array('aasosp' ,aaso   ,NESP,NESP,   1)
+         call put_restart_array('aaspsp' ,aasp   ,NESP,NESP,   1)
+         call put_restart_array('aastsp' ,aast   ,NESP,NESP,NLEV)
+         call put_restart_array('aasqsp' ,aasqout,NESP,NESP,NLEV)
+         call put_restart_array('aasdsp' ,aasd   ,NESP,NESP,NLEV)
+         call put_restart_array('aaszsp' ,aasz   ,NESP,NESP,NLEV)
+!        Accumulated orbital scalars: not saved at all before this patch.
+         call put_restart_real('aorbnu'  ,aorbnu)
+         call put_restart_real('alambm'  ,alambm)
+         call put_restart_real('azdecl'  ,azdecl)
+         call put_restart_real('ardist'  ,ardist)
+         call put_restart_real('arasc'   ,arasc )
+!        Marks a restart whose accumulator set is complete.
+         call put_restart_real('accuvers',1.0)
+      endif
+!     Accumulated hurricane indices are gridpoint fields divided by naccuout in
+!     outgp; they were not saved either.
+      call mpputgp('agpi'         ,agpi        ,NHOR,1)
+      call mpputgp('aventi'       ,aventi      ,NHOR,1)
+      call mpputgp('alaav'        ,alaav       ,NHOR,1)
+      call mpputgp('ampoti'       ,ampoti      ,NHOR,1)
+      call mpputgp('avrmpi'       ,avrmpi      ,NHOR,1)
+      call mpputgp('acapen'       ,acapen      ,NHOR,1)
+      call mpputgp('alnb'         ,alnb        ,NHOR,1)
+      call mpputgp('achim'        ,achim       ,NHOR,1)
       call mpputgp('aadq'        ,aadq    ,NHOR,NLEP) 
       call mpputgp('aammr'       ,aammr   ,NHOR,NLEP)
       call mpputgp('aanrho'      ,aanrho  ,NHOR,NLEP)
@@ -992,6 +1039,7 @@ plasimversion = "https://github.com/Edilbert/PLASIM/ : 15-Dec-2015"
 
       subroutine read_atmos_restart
       use pumamod
+      use restartmod, only: nexcheck
 
 !     read scalars and full spectral arrays
 
@@ -1083,12 +1131,46 @@ plasimversion = "https://github.com/Edilbert/PLASIM/ : 15-Dec-2015"
       call mpgetgp('tempmax'     ,tempmax ,NHOR,1) 
       call mpgetgp('tempmin'     ,tempmin ,NHOR,1) 
                                            
-      call mpgetgp('aaso'        ,aaso    ,NESP,1)        
-      call mpgetgp('aasp'        ,aasp    ,NESP,1)        
-      call mpgetgp('aast'        ,aast    ,NESP,NLEV)   
-      call mpgetgp('aasqout'     ,aasqout ,NESP,NLEV)
-      call mpgetgp('aasd'        ,aasd    ,NESP,NLEV)   
-      call mpgetgp('aasz'        ,aasz    ,NESP,NLEV)   
+!     Spectral accumulators, NROOT only -- see the matching comment in epilog.
+!     zaccuvers stays negative for a restart written before this patch: such a
+!     file has no complete accumulator set, so the partial output interval it
+!     carries is discarded and naccuout is zeroed to match. Without that the
+!     counter would again outlive the accumulators it counts.
+      zaccuvers = -1.0
+      if (mypid == NROOT) then
+         nexcheck = 0
+         call get_restart_real('accuvers',zaccuvers)
+         if (zaccuvers > 0.0) then
+            call get_restart_array('aasosp' ,aaso   ,NESP,NESP,   1)
+            call get_restart_array('aaspsp' ,aasp   ,NESP,NESP,   1)
+            call get_restart_array('aastsp' ,aast   ,NESP,NESP,NLEV)
+            call get_restart_array('aasqsp' ,aasqout,NESP,NESP,NLEV)
+            call get_restart_array('aasdsp' ,aasd   ,NESP,NESP,NLEV)
+            call get_restart_array('aaszsp' ,aasz   ,NESP,NESP,NLEV)
+            call get_restart_real('aorbnu'  ,aorbnu)
+            call get_restart_real('alambm'  ,alambm)
+            call get_restart_real('azdecl'  ,azdecl)
+            call get_restart_real('ardist'  ,ardist)
+            call get_restart_real('arasc'   ,arasc )
+         endif
+         nexcheck = 1
+      endif
+      call mpbcr(zaccuvers)
+      if (zaccuvers < 0.0) then
+         call outreset          ! no accumulator set: start the interval clean
+         if (mypid == NROOT) write(nud,*)                                   &
+     &      'Restart predates the accumulator fix: partial output interval', &
+     &      ' discarded and naccuout reset to 0'
+      else
+         call mpgetgp('agpi'         ,agpi        ,NHOR,1)
+         call mpgetgp('aventi'       ,aventi      ,NHOR,1)
+         call mpgetgp('alaav'        ,alaav       ,NHOR,1)
+         call mpgetgp('ampoti'       ,ampoti      ,NHOR,1)
+         call mpgetgp('avrmpi'       ,avrmpi      ,NHOR,1)
+         call mpgetgp('acapen'       ,acapen      ,NHOR,1)
+         call mpgetgp('alnb'         ,alnb        ,NHOR,1)
+         call mpgetgp('achim'        ,achim       ,NHOR,1)
+      endif
       call mpgetgp('aadq'        ,aadq    ,NHOR,NLEP)
       call mpgetgp('aammr'       ,aammr   ,NHOR,NLEP)
       call mpgetgp('aanrho'      ,aanrho  ,NHOR,NLEP)
@@ -3215,7 +3297,13 @@ plasimversion = "https://github.com/Edilbert/PLASIM/ : 15-Dec-2015"
 !     compute output specific humidity
 !
 
-      if (mod(nstep,nafter)==0 .and. nqspec == 1) then
+!     Under low I/O, outaccu sums sqout on EVERY timestep, so sqout has to be
+!     current on every timestep. Recomputing it only at the output step made
+!     the accumulated humidity a sum over one stale value per interval, and
+!     zero for the steps of a model call that precede the first update -- the
+!     phase of which walks from call to call. Only the mod() test changes; the
+!     transform itself is unchanged.
+      if ((nlowio > 0 .or. mod(nstep,nafter)==0) .and. nqspec == 1) then
        do jlev=1,NLEV
         zqout(:,jlev)=gq(:,jlev)/exp(gp(:))
         call gp2fc(zqout(1,jlev),NLON,NLPP)

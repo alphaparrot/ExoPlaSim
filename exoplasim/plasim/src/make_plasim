@@ -38,7 +38,7 @@ plasimmod.o:	plasimmod.f90 resmod.o
 carbonmod.o:	carbonmod.f90 radmod.o plasimmod.o
 hurricanemod.o: hurricanemod.f90 plasimmod.o
 ${UTILMOD}.o:	${UTILMOD}.f90 plasimmod.o carbonmod.o
-plasim.o:	plasim.f90 plasimmod.o
+plasim.o:	plasim.f90 plasimmod.o restartmod.o
 ${FFTMOD}.o:	${FFTMOD}.f90
 ${MPIMOD}.o:	${MPIMOD}.f90 plasimmod.o
 ${GUIMOD}.o:	${GUIMOD}.f90 plasimmod.o radmod.o ${OCEANCOUP}.o
