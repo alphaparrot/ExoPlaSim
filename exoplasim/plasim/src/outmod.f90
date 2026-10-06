@@ -1156,17 +1156,37 @@
 !     * energy diagnostics if switched on *
 !     *************************************
 
+!     The 28 energy terms are written as MEANS over the output interval, like
+!     every other field on this stream. They used to be written straight from
+!     the live array, which made them instantaneous values at the output step
+!     while `ashfl`, `alhfl`, `assol`, `asthr` and the rest -- the very fluxes
+!     they have to be compared against -- were time means over the same
+!     interval. Comparing them was comparing two different averages of two
+!     different things, and the size of the error was measurable because one
+!     pair is an algebraic identity: denergy(:,7) reduces to -dshfl exactly, and
+!     under NLOWIO = 1 the two were 7.14% apart where under NLOWIO = 0 they are
+!     0.15% apart.
+!
+!     naccuout is the same counter every other accumulator on this stream
+!     divides by, so the terms now carry the same average as their comparands
+!     under either I/O regime. Under NLOWIO = 0 it is 1 and this is a no-op.
+!
+!     The snapshot stream (snapshotdiag) is deliberately NOT changed: a snapshot
+!     is an instantaneous value by definition, and that is what it should stay.
+!
       if(nenergy > 0) then
+       adenergy(:,:)=adenergy(:,:)/real(max(1,naccuout))
        do jdiag=1,28
         jcode=359+jdiag
-        call writegp(40,denergy(1,jdiag),jcode,0)
+        call writegp(40,adenergy(1,jdiag),jcode,0)
        enddo
       end if
       if(nener3d > 0) then
+       adener3d(:,:,:)=adener3d(:,:,:)/real(max(1,naccuout))
        do jdiag=1,28
         jcode=459+jdiag
         do jlev=1,NLEV
-         call writegp(40,dener3d(1,jlev,jdiag),jcode,jlev)
+         call writegp(40,adener3d(1,jlev,jdiag),jcode,jlev)
         enddo
        enddo
       end if
@@ -2487,6 +2507,24 @@
       if(ndiagcf > 0) then
        dclforc(:,:)=0.
       end if
+
+!     **************************************
+!     * energy diagnostics if switched on *
+!     **************************************
+!
+!     Not carried across a restart, unlike the aa* arrays above, and that is
+!     deliberate rather than an omission. outreset runs immediately after the
+!     write and a run always ends on an output boundary, so an accumulation
+!     window never straddles a restart; adding restart records would instead
+!     make a rebuilt binary refuse every restart written by the current one,
+!     because get_restart_array stops on a missing name when nexcheck = 1.
+!
+      if(nenergy > 0) then
+       adenergy(:,:)=0.
+      end if
+      if(nener3d > 0) then
+       adener3d(:,:,:)=0.
+      end if
 !
       return
       end
@@ -2597,7 +2635,18 @@
         achim(:)  = achim(:)  + chim(:) 
       
       endif
-      
+
+!     **************************************
+!     * energy diagnostics if switched on *
+!     **************************************
+
+      if(nenergy > 0) then
+       adenergy(:,:)=adenergy(:,:)+denergy(:,:)
+      end if
+      if(nener3d > 0) then
+       adener3d(:,:,:)=adener3d(:,:,:)+dener3d(:,:,:)
+      end if
+
       naccuout=naccuout+1
 !
       return

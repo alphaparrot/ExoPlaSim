@@ -521,7 +521,21 @@
      &                   *acpd*(1.+adv*dq(:,jlev))*dp(:)/ga*dsigma(jlev)
         endif
         do jhor=1,NHOR
-         if(zt(jhor) > TMELT) then
+!        Phase choice for the latent heat released by condensation. Below the
+!        melting point the vapour goes to ice and sublimation applies; above it
+!        the vapour goes to liquid and vaporisation applies.
+!
+!        This was inverted, assigning als above TMELT and alv below. It sits
+!        inside if(nenergy > 0) and feeds only denergy(:,15) and
+!        dener3d(:,:,15), so the prognostic physics was never affected and no
+!        completed run is wrong. But term 15 was, by als - alv at every
+!        condensing gridpoint, which is exactly the quantity anyone enabling
+!        these diagnostics is trying to measure.
+!
+!        The correct convention is used by the prognostic code in this same file
+!        (rainmod.f90:731, 850, 944, 1047, all `if(ztnew < TMELT) zlcp=ALS`) and
+!        by the surface latent heat flux in fluxmod.f90:687.
+         if(zt(jhor) < TMELT) then
           zzal=als
          else
           zzal=alv

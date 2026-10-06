@@ -488,6 +488,8 @@
       real, allocatable :: dentro3d(:,:,:)! entropy diagnostics 3d
       real, allocatable :: denergy(:,:)   ! energy diagnostics
       real, allocatable :: dener3d(:,:,:) ! energy diagnostics 3d
+      real, allocatable :: adenergy(:,:)   ! accumulated energy diagnostics
+      real, allocatable :: adener3d(:,:,:) ! accumulated energy diagnostics 3d
       real, allocatable :: dentrop(:)     ! ps for entropy diagnostics
       real, allocatable :: dentrot(:,:)   ! t for entropy diagnostics
       real, allocatable :: dentroq(:,:)   ! q for entropy diagnostics

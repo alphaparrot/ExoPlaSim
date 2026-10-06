@@ -402,10 +402,14 @@ plasimversion = "https://github.com/Edilbert/PLASIM/ : 15-Dec-2015"
       if(nenergy > 0) then
        allocate(denergy(NHOR,28))
        denergy(:,:)=0.
+       allocate(adenergy(NHOR,28))
+       adenergy(:,:)=0.
       end if
       if(nener3d > 0) then
        allocate(dener3d(NHOR,NLEV,28))
        dener3d(:,:,:)=0.
+       allocate(adener3d(NHOR,NLEV,28))
+       adener3d(:,:,:)=0.
       end if
 
       call legini
@@ -742,7 +746,9 @@ plasimversion = "https://github.com/Edilbert/PLASIM/ : 15-Dec-2015"
        deallocate(dentropy,dentrop,dentrot,dentroq,dentro)
       endif
       if(nenergy   > 0) deallocate(denergy)
+      if(nenergy   > 0) deallocate(adenergy)
       if(nener3d   > 0) deallocate(dener3d)
+      if(nener3d   > 0) deallocate(adener3d)
       if(nentro3d  > 0) deallocate(dentro3d)
 !
 !     close output file
