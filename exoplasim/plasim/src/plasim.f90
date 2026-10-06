@@ -215,6 +215,25 @@ plasimversion = "https://github.com/Edilbert/PLASIM/ : 15-Dec-2015"
       call mpbci(nveg    ) ! vegetation switch
       call mpbci(noutput ) ! write data switch
       call mpbci(nafter  ) ! write data interval
+!
+!     nlowio and nstpw are read from plasim_nl on NROOT only, exactly like every
+!     key broadcast around here, but unlike them they were never broadcast at
+!     all. Every non-root task therefore kept the COMPILED DEFAULT nlowio = 1
+!     (plasimmod.f90) while NROOT held whatever the namelist said. That is
+!     invisible while the namelist also says 1, and it DEADLOCKS the model when
+!     it says 0: the `if (nlowio .eq. 0)` blocks in outmod.f90 call writegp and
+!     writesp, and writegp opens with the COLLECTIVE mpgagp. NROOT enters that
+!     gather and no other task does, so the tasks desynchronise and the run sits
+!     in mismatched collectives -- 100% CPU, no system time, no output past the
+!     40-byte header, forever.
+!
+!     nafter is broadcast on the line above and is derived from both of these on
+!     NROOT, so the output CADENCE was always consistent across tasks. Only the
+!     branch that decides WHICH fields to write was not, which is why this hid
+!     for as long as the namelist agreed with the default.
+!
+      call mpbci(nlowio  ) ! low-I/O accumulation mode (0/1)
+      call mpbci(nstpw   ) ! timesteps between writes
       call mpbci(nwpd    ) ! number of writes per day
       call mpbci(nsnapshot) ! Switch for writing snapshots
       call mpbci(nstps   ) ! number of steps per snapshot
