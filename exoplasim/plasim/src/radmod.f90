@@ -538,15 +538,6 @@
         if (nsimplealbedo>0.5) doceanalb(:) = z1*a1 + z2*a2
         
         
-        call put_restart_array("zsolars",zsolars,2,2,1)
-        call put_restart_array('dsnowalb',dsnowalb,2,2,1)
-        call put_restart_array('dsnowalbmn',dsnowalbmn,2,2,1)
-        call put_restart_array('dsnowalbmx',dsnowalbmx,2,2,1)
-        call put_restart_array('dicealbmn',dicealbmn,2,2,1)
-        call put_restart_array('dicealbmx',dicealbmx,2,2,1)
-        call put_restart_array('dglacalbmn',dglacalbmn,2,2,1)
-        call put_restart_array('dgroundalb',dgroundalb,2,2,1)
-        call put_restart_array('doceanalb',doceanalb,2,2,1)
                                
         
       endif
@@ -1314,7 +1305,7 @@
 !     no PUMA variables are used
 !
       if (mypid==NROOT) call put_restart_real('fixedlon',fixedlon)
-      call mpputgp('zsolars',zsolars,2,1)
+      if (mypid == NROOT) call put_restart_array('zsolars',zsolars,2,2,1)
       
 
       if(mypid == NROOT .and. ntime == 1) then
