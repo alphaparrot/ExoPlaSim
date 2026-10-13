@@ -609,7 +609,6 @@
      &               ,nsol,nclouds,nswrcl,nrscat,rcl1,rcl2,acl2,clgray,tpofmt   &
      &               ,acllwr,tswr1,tswr2,tswr3,th2oc,dawn,starbbtemp,nstartemp  &
      &               ,nsimplealbedo,nstarfile,starfile,starfilehr,minwavel
-     namelist/aero_nl/l_source,l_bulk,apart,rhop,fcoeff,l_aerorad,aerofile
 !
 !     namelist parameter:
 !
@@ -794,6 +793,13 @@
       call mpbcr(minwavel)
       
       call mpbci(l_aerorad)
+!
+!     aero_ini runs on NROOT only and has copied aero_nl's particle radius
+!     into radmod's own by this point. Without this broadcast every other
+!     rank keeps the 50 nm default. Harmless where aero_ini never ran,
+!     because both copies are then the same default.
+!
+      call mpbcr(apart)
 
 !      
 !     determine stellar parameters      

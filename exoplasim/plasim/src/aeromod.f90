@@ -52,7 +52,7 @@
 
       subroutine aero_ini
       use aeromod
-      use radmod, only: l_aerorad, aerofile
+      use radmod, only: l_aerorad, aerofile, rad_apart => apart
       
       namelist/aero_nl/l_source,l_bulk,apart,rhop,fcoeff,l_aerorad,aerofile
 
@@ -66,6 +66,16 @@
          write(nud,'(" * Namelist AERO_NL from <aero_namelist> *")')
          write(nud,'(" *********************************************")')
          write(nud,aero_nl)
+!
+!        radmod declares its own `apart` and this namelist sets aeromod's, so
+!        without the line below the transport uses the radius the run asked for
+!        while the radiation keeps radmod's 50 nm default. Optical depth goes as
+!        the radius squared, so the shortwave aerosol came out (50e-9/apart)**2
+!        of intent. radini broadcasts it, which is why this can sit inside the
+!        NROOT block. The two variables stay separate because radmod cannot use
+!        aeromod: aeromod already uses radmod, and make_plasim compiles it second.
+!
+         rad_apart = apart
       endif
       
       return
