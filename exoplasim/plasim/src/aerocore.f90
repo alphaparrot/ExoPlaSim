@@ -13,7 +13,7 @@
                         cose,cosp,acosp,dlat,rcap,        &
                         cnst,deform,zcross,               &
                         fill,mfct,debug,nud,angle,land,   &
-                        aerosw,l_aerorad)
+                        aerosw,l_aerorad,prec)
 !****6***0*********0*********0*********0*********0*********0**********72
 !
 ! The subroutine aerocore is a duplicate of the tracer transport
@@ -247,7 +247,8 @@
 ! activated if the user set "fill" to be true.
 ! Alternatively, one can use the MFCT option to enforce monotonicity.
 !
-      use pumamod, only: NLAT,NLON,NLEV,ga ! Use planet's gravity from pumamod
+      use pumamod, only: NLAT,NLON,NLEV,ga,deltsec ! Planet gravity and timestep from pumamod
+      use aeromod, only: ldepvel,vdaero,lwetdep,scava,scavb ! Removal switches
       implicit none
 
 ! Input-Output variables
@@ -297,6 +298,9 @@
       real ::   angle(im,jm) ! Array for cosine of solar zenith angle
       real ::   land(im,jm) ! Array for binary land mask
       real ::   aerosw(im,jm,nl) ! Array for net SW flux
+      real,intent(in) :: prec(im,jm) ! Total precipitation rate (m/s), for lwetdep
+      real ::   zdz(im,jm) ! Geometric thickness of the bottom layer (m)
+      real ::   zlam(im,jm) ! Below-cloud scavenging rate (1/s)
 
 ! scalars
 
@@ -713,6 +717,12 @@
 !****6***0*********0*********0*********0*********0*********0**********72
 ! Compute vertical flux due to gravitational settling 
       call gsettle(qz,im,jm,nl,rhog,vels,nud,gz)
+
+! gsettle returns a FLUX in kg/m2/s. The FFSL fluxes fx, fy and fz carry the
+! timestep inside their Courant numbers and gz does not, so every use of gz
+! below was applying one second of settling per model step. Convert it here,
+! once, rather than at each of the five use sites.
+      gz = gz*deltsec
       
 !****6***0*********0*********0*********0*********0*********0**********72
  
@@ -774,8 +784,11 @@
         sum2 = sum2 + fy(i,J2+1,1) ! Add fy for last lon at northernmost lat
       enddo
  
-      daero(1, 1,1) = daero(1, 1,1) - sum1*RCAP + fz(1, 1,1) - fz(1, 1,2) ! First lon, southernmost lat
-      daero(1,JM,1) = daero(1,JM,1) + sum2*RCAP + fz(1,JM,1) - fz(1,JM,2) ! First lon, northernmost lat
+! The gz terms are here because the polar caps settle too. Upstream carried the
+! fy and fz terms at the caps and dropped the settling one, so aerosol fell
+! everywhere except the two cap rows and mass was not conserved between them.
+      daero(1, 1,1) = daero(1, 1,1) - sum1*RCAP + fz(1, 1,1) - fz(1, 1,2) - gz(1, 1,1)*ga ! First lon, southernmost lat
+      daero(1,JM,1) = daero(1,JM,1) + sum2*RCAP + fz(1,JM,1) - fz(1,JM,2) - gz(1,JM,1)*ga ! First lon, northernmost lat
  
       do i=2,IM ! All other lons except first
         daero(i, 1,1) = daero(1, 1,1) ! At southernmost lat, daero is equal to daero at first lon
@@ -783,7 +796,10 @@
       enddo							
 
 ! For all levels except the top and bottom, add flux from level above and subtract flux falling out of current level
-      do k=2,NL
+! NL is EXCLUDED here: the block below updates it. Upstream looped to NL and
+! then ran that block as well, so every flux at the bottom level was applied
+! twice and the two settling terms cancelled.
+      do k=2,NL-1
 
         do j=j1,j2 ! Between the caps
             do i=1,IM ! For all lons
@@ -803,8 +819,8 @@
             sum2 = sum2 + fy(i,J2+1,k) ! Add fy for last lon at northernmost lat
         enddo
     
-        daero(1, 1,k) = daero(1, 1,k) - sum1*RCAP + fz(1, 1,k) - fz(1, 1,k+1) ! First lon, southernmost lat
-        daero(1,JM,k) = daero(1,JM,k) + sum2*RCAP + fz(1,JM,k) - fz(1,JM,k+1) ! First lon, northernmost lat
+        daero(1, 1,k) = daero(1, 1,k) - sum1*RCAP + fz(1, 1,k) - fz(1, 1,k+1) + (gz(1, 1,k-1) - gz(1, 1,k))*ga ! First lon, southernmost lat
+        daero(1,JM,k) = daero(1,JM,k) + sum2*RCAP + fz(1,JM,k) - fz(1,JM,k+1) + (gz(1,JM,k-1) - gz(1,JM,k))*ga ! First lon, northernmost lat
     
         do i=2,IM ! All other lons except first
             daero(i, 1,k) = daero(1, 1,k) ! At southernmost lat, daero is equal to daero at first lon
@@ -813,13 +829,17 @@
 
       enddo
 
-! Now for k=nl, only add the flux coming from the level above
+! Now for k=nl. It takes the settling flux arriving from the level above and
+! LOSES the one leaving through the surface, which is dry deposition by
+! sedimentation. Upstream added gz(nl) instead of subtracting it, so nothing
+! ever left the atmosphere and the bottom layer built up without bound -- which
+! is what the 99%-per-step sink further down was put in to hide.
       do j=j1,j2 
         do i=1,IM
             daero(i,j,nl) = daero(i,j,nl) +  fx(i,j,nl) - fx(i+1,j,nl)                   &
                             + (fy(i,j,nl) - fy(i,j+1,nl))*acosp(j)/dlat(j) &
                             +  fz(i,j,nl) - fz(i,j,nl+1) &
-                            + gz(i,j,nl)*ga
+                            + (gz(i,j,nl-1) - gz(i,j,nl))*ga
         enddo ! Lon loop
       enddo ! Lat loop
       
@@ -832,8 +852,8 @@
         sum2 = sum2 + fy(i,J2+1,nl) ! Add fy for last lon at northernmost lat
       enddo
  
-      daero(1, 1,nl) = daero(1, 1,nl) - sum1*RCAP + fz(1, 1,nl) - fz(1, 1,nl+1) ! First lon, southernmost lat
-      daero(1,JM,nl) = daero(1,JM,nl) + sum2*RCAP + fz(1,JM,nl) - fz(1,JM,nl+1) ! First lon, northernmost lat
+      daero(1, 1,nl) = daero(1, 1,nl) - sum1*RCAP + fz(1, 1,nl) - fz(1, 1,nl+1) + (gz(1, 1,nl-1) - gz(1, 1,nl))*ga ! First lon, southernmost lat
+      daero(1,JM,nl) = daero(1,JM,nl) + sum2*RCAP + fz(1,JM,nl) - fz(1,JM,nl+1) + (gz(1,JM,nl-1) - gz(1,JM,nl))*ga ! First lon, northernmost lat
  
       do i=2,IM ! All other lons except first
         daero(i, 1,nl) = daero(1, 1,nl) ! At southernmost lat, daero is equal to daero at first lon
@@ -865,8 +885,41 @@
         mmr(:,:,:,IC) = daero(:,:,:) / delp2dyn(:,:,:)
       end select
 
-! Finally, put in a sink term at the bottom level to avoid infinite build-up of haze particles	  
-      mmr(:,:,nl,ic) = mmr(:,:,nl,ic)*10e-3
+! Dry deposition at the bottom level, over and above sedimentation.
+!
+! ldepvel = 0 keeps the legacy sink, which removes 99% of the bottom layer
+! every timestep whatever the timestep is. ldepvel = 1 replaces it with a
+! deposition velocity acting over the layer's own geometric depth, which is
+! the only form whose implied removal rate is independent of the step.
+!
+! vdaero is the NON-gravitational part on purpose. Settling out of the bottom
+! layer is already taken by the gz(nl) term in the final update above, so
+! adding a Stokes velocity here would deposit the same mass twice.
+      select case (ldepvel)
+      case(0)
+        mmr(:,:,nl,ic) = mmr(:,:,nl,ic)*10e-3
+      case(1)
+        zdz(:,:) = delp2dyn(:,:,nl)/max(rhog(:,:,nl)*ga,1.E-6)
+        mmr(:,:,nl,ic) = mmr(:,:,nl,ic)                                    &
+                       * exp(-min(vdaero*deltsec/max(zdz(:,:),1.0),50.))
+      end select
+
+! Below-cloud wet scavenging, Sportisse (2007): Lambda = A p**B with p in
+! mm/h, which is the form and the coefficients the run's own configuration
+! already carries for the offline chain. prec arrives in m/s, hence 3.6E6.
+!
+! Applied to the whole column rather than below a diagnosed cloud base. That
+! is the offline chain's own approximation, kept deliberately so the two agree
+! in form; it overstates the scavenging of aerosol sitting above the
+! precipitating layer and is the first thing to refine if the wet sink turns
+! out to dominate more than the offline chain says it should.
+      if (lwetdep == 1) then
+        zlam(:,:) = scava*(max(prec(:,:),0.)*3.6E6)**scavb
+        do k=1,nl
+          mmr(:,:,k,ic) = mmr(:,:,k,ic)*exp(-min(zlam(:,:)*deltsec,50.))
+        enddo
+      endif
+
       where(mmr .lt. 0.) mmr = 0.0
       
       call mmr2n(mmr(:,:,:,ic),apart,rhop,rhog,im,jm,nl,numrhos(:,:,:,ic))
@@ -946,7 +999,10 @@
     rt_pi = SQRT(PI)
     rt_kb = SQRT(kb)
     sq_dair = dair*dair
-    temp_eps = (temp/eps)**(4/25)
+! (4/25) is INTEGER division and evaluates to 0, which deleted the collision
+! integral's temperature dependence entirely and left viscosity 11 to 18 per
+! cent low over 200-320 K in N2 -- and Stokes settling correspondingly fast.
+    temp_eps = (temp/eps)**(4./25.)
     coeff = (5./16.)*(1./1.22)*(1./PI)*rt_pi*rt_mair*rt_kb/sq_dair
     
     mu = coeff*rt_temp*temp_eps
@@ -1153,7 +1209,9 @@
     REAL :: svol
     REAL :: mpart
     
-    svol = (4/3)*PI*(apart**3) ! Sphere volume
+! (4/3) is INTEGER division and evaluates to 1, so the sphere volume was 4/3
+! too small and the number density 4/3 = 33% too high.
+    svol = (4./3.)*PI*(apart**3) ! Sphere volume
     mpart = svol*rhop
     numrho = mmr*(1/mpart)*rhog
     RETURN
@@ -1180,7 +1238,8 @@
     REAL :: svol
     REAL :: mpart
     
-    svol = (4/3)*PI*(apart**3) ! Sphere volume
+! (4/3) is INTEGER division; see mmr2n above.
+    svol = (4./3.)*PI*(apart**3) ! Sphere volume
     mpart = svol*rhop ! Mass of one particle
     
     mmr = numrho*mpart/rhog
