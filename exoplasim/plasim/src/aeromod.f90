@@ -98,6 +98,14 @@
       real ::   aerosw(NLON,NLAT,NLEV) ! Array for SW flux 
       real ::   land(NLON,NLAT) ! Array for binary land mask
 
+!     Gather buffer. mpgagp returns a field in the MODEL's latitude order,
+!     while daeros and numrhos are handed to aerocore flipped south-to-north
+!     (see plasim.f90, `daeros(:,NLAT+1-jlat,:,1) = zmmr(:,jlat,:)`). Every
+!     field gathered here therefore has to be flipped the same way before it
+!     is used against them. Upstream did not, so the land mask and the solar
+!     zenith angle drove the aerosol source in the wrong hemisphere.
+      real ::   zgath(NLON,NLAT,NLEV)
+
       integer :: j,jc
 
       character(len=9) :: aero_name
@@ -111,18 +119,30 @@
        select case (l_source) ! Choose your aerosol source
        case(1) ! Case 1: photochemical haze
          call solang ! Use subroutine from radmod to calculate solar zenith angle
-         call mpgagp(angle,gmu0,1) ! Gather from nodes
+         call mpgagp(zgath,gmu0,1) ! Gather from nodes
+         do j=1,NLAT
+            angle(:,NLAT+1-j) = zgath(:,j,1)
+         end do
        case(2) ! Case 2: dust
-         call mpgagp(land,dls,1) ! Import land-sea mask from landmod and reshape to match grid size
+         call mpgagp(zgath,dls,1) ! Import land-sea mask from landmod and reshape to match grid size
+         do j=1,NLAT
+            land(:,NLAT+1-j) = zgath(:,j,1)
+         end do
        end select
       end if
       
       if (l_aerorad == 1) then ! Include radiative transfer
        select case (l_source) ! Choose aerosol source
        case(1) ! Case 1: photochemical haze     
-        call mpgagp(aerosw,dswfl,NLEV) ! Gather SW flux from nodes
+        call mpgagp(zgath,dswfl,NLEV) ! Gather SW flux from nodes
+        do j=1,NLAT
+           aerosw(:,NLAT+1-j,:) = zgath(:,j,:)
+        end do
        case(2) ! Case 2: dust
-        call mpgagp(land,dls,1) ! Import land-sea mask from landmod and reshape to match grid size
+        call mpgagp(zgath,dls,1) ! Import land-sea mask from landmod and reshape to match grid size
+        do j=1,NLAT
+           land(:,NLAT+1-j) = zgath(:,j,1)
+        end do
        end select
       end if 
 
