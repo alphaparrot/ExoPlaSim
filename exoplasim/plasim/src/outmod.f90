@@ -271,7 +271,7 @@
         
         !Solar right ascension
         arasc = arasc/real(max(1,naccuout))
-        call writescalar(40,rasc*180./PI,54)
+        call writescalar(40,arasc*180./PI,54)
       endif
       
       return
